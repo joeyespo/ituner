@@ -53,6 +53,10 @@ public class Win32
 	public static extern bool ShowWindow(IntPtr hWnd, ShowWindowCommands nCmdShow);
   
   
+  public const int MOD_ALT = unchecked( (int)(0x1) );
+  public const int MOD_CONTROL = unchecked( (int)(0x2) );
+  public const int MOD_SHIFT = unchecked( (int)(0x4) );
+  
   [DllImport("user32", EntryPoint="RegisterHotKey", SetLastError=true, CharSet=CharSet.Auto, ExactSpelling=false, CallingConvention=CallingConvention.Winapi)]
   public static extern int RegisterHotKey ( IntPtr hWnd, int id, int fsModifiers, int vk );
   

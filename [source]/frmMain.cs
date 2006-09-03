@@ -15,6 +15,7 @@ namespace iTuner
   {
     HotkeyItem [] hotkeys = new HotkeyItem [0];
     iTunesApp iTunesControl;
+    bool stopAfterCurrent = false;
     
     #region Class Variables
     
@@ -38,6 +39,9 @@ namespace iTuner
     private System.Windows.Forms.Label lblTitle;
     private System.Windows.Forms.Label lblPlaylist;
     private System.Windows.Forms.PictureBox picArtwork;
+    private System.Windows.Forms.MenuItem menuTrayMenuStopAfterCurrent;
+    private System.Windows.Forms.MenuItem menuTrayMenuSep04;
+    private System.Windows.Forms.MenuItem menuTrayMenuAbout;
     private System.Windows.Forms.Timer timerClose;
     
     #endregion
@@ -50,13 +54,15 @@ namespace iTuner
       // Required for Windows Form Designer support
       //
       InitializeComponent();
+      this.FormBorderStyle = FormBorderStyle.None;
       
       try
       {
         iTunesControl = new iTunesAppClass();
-        iTunesControl.OnPlayerPlayingTrackChangedEvent += new _IiTunesEvents_OnPlayerPlayingTrackChangedEventEventHandler(iTunesControl_OnPlayerEvent);
-        iTunesControl.OnPlayerPlayEvent += new _IiTunesEvents_OnPlayerPlayEventEventHandler(iTunesControl_OnPlayerEvent);
-        iTunesControl.OnPlayerStopEvent += new _IiTunesEvents_OnPlayerStopEventEventHandler(iTunesControl_OnPlayerEvent);
+        iTunesControl.OnPlayerPlayingTrackChangedEvent += new _IiTunesEvents_OnPlayerPlayingTrackChangedEventEventHandler(iTunesControl_OnTrackChangedEvent);
+        iTunesControl.OnPlayerPlayEvent += new _IiTunesEvents_OnPlayerPlayEventEventHandler(iTunesControl_OnPlayEvent);
+        iTunesControl.OnPlayerStopEvent += new _IiTunesEvents_OnPlayerStopEventEventHandler(iTunesControl_OnStopEvent);
+        iTunesControl.BrowserWindow.Visible = true;
       }
       catch (COMException)
       {
@@ -71,11 +77,12 @@ namespace iTuner
       int y = desktopHeight - this.Height;
       this.SetDesktopLocation(x,y);
       
-      hotkeys = new HotkeyItem [4];
+      hotkeys = new HotkeyItem [5];
       hotkeys[0] = new HotkeyItem(HotkeyAction.PlayPause, (int)Keys.MediaPlayPause);
-      hotkeys[3] = new HotkeyItem(HotkeyAction.Stop, (int)Keys.MediaStop);
-      hotkeys[1] = new HotkeyItem(HotkeyAction.NextSong, (int)Keys.MediaNextTrack);
-      hotkeys[2] = new HotkeyItem(HotkeyAction.PreviousSong, (int)Keys.MediaPreviousTrack);
+      hotkeys[1] = new HotkeyItem(HotkeyAction.Stop, (int)Keys.MediaStop);
+      hotkeys[2] = new HotkeyItem(HotkeyAction.NextSong, (int)Keys.MediaNextTrack);
+      hotkeys[3] = new HotkeyItem(HotkeyAction.PreviousSong, (int)Keys.MediaPreviousTrack);
+      hotkeys[4] = new HotkeyItem(HotkeyAction.ToggleStopAfterCurrent, (int)Keys.MediaStop, Win32.MOD_CONTROL);
       setHotkeys();
     }
     
@@ -113,8 +120,10 @@ namespace iTuner
       this.menuTrayMenuNext = new System.Windows.Forms.MenuItem();
       this.menuTrayMenuPrev = new System.Windows.Forms.MenuItem();
       this.menuTrayMenuSep02 = new System.Windows.Forms.MenuItem();
-      this.menuTrayMenuPreferences = new System.Windows.Forms.MenuItem();
+      this.menuTrayMenuStopAfterCurrent = new System.Windows.Forms.MenuItem();
       this.menuTrayMenuSep03 = new System.Windows.Forms.MenuItem();
+      this.menuTrayMenuPreferences = new System.Windows.Forms.MenuItem();
+      this.menuTrayMenuSep04 = new System.Windows.Forms.MenuItem();
       this.menuTrayMenuExit = new System.Windows.Forms.MenuItem();
       this.lblAuthor = new System.Windows.Forms.Label();
       this.lblTitle = new System.Windows.Forms.Label();
@@ -123,6 +132,7 @@ namespace iTuner
       this.picArtwork = new System.Windows.Forms.PictureBox();
       this.lblPlaylist = new System.Windows.Forms.Label();
       this.lblTrack = new System.Windows.Forms.Label();
+      this.menuTrayMenuAbout = new System.Windows.Forms.MenuItem();
       this.panPopup.SuspendLayout();
       this.SuspendLayout();
       // 
@@ -145,9 +155,13 @@ namespace iTuner
                                                                                  this.menuTrayMenuNext,
                                                                                  this.menuTrayMenuPrev,
                                                                                  this.menuTrayMenuSep02,
-                                                                                 this.menuTrayMenuPreferences,
+                                                                                 this.menuTrayMenuStopAfterCurrent,
                                                                                  this.menuTrayMenuSep03,
+                                                                                 this.menuTrayMenuPreferences,
+                                                                                 this.menuTrayMenuAbout,
+                                                                                 this.menuTrayMenuSep04,
                                                                                  this.menuTrayMenuExit});
+      this.menuTrayMenu.Popup += new System.EventHandler(this.menuTrayMenu_Popup);
       // 
       // menuTrayMenuShow
       // 
@@ -196,20 +210,31 @@ namespace iTuner
       this.menuTrayMenuSep02.Index = 7;
       this.menuTrayMenuSep02.Text = "-";
       // 
-      // menuTrayMenuPreferences
+      // menuTrayMenuStopAfterCurrent
       // 
-      this.menuTrayMenuPreferences.Index = 8;
-      this.menuTrayMenuPreferences.Text = "Pre&ferences...";
-      this.menuTrayMenuPreferences.Click += new System.EventHandler(this.menuTrayMenuPreferences_Click);
+      this.menuTrayMenuStopAfterCurrent.Index = 8;
+      this.menuTrayMenuStopAfterCurrent.Text = "Stop After &Current";
+      this.menuTrayMenuStopAfterCurrent.Click += new System.EventHandler(this.menuTrayMenuStopAfterCurrent_Click);
       // 
       // menuTrayMenuSep03
       // 
       this.menuTrayMenuSep03.Index = 9;
       this.menuTrayMenuSep03.Text = "-";
       // 
+      // menuTrayMenuPreferences
+      // 
+      this.menuTrayMenuPreferences.Index = 10;
+      this.menuTrayMenuPreferences.Text = "Pre&ferences...";
+      this.menuTrayMenuPreferences.Click += new System.EventHandler(this.menuTrayMenuPreferences_Click);
+      // 
+      // menuTrayMenuSep04
+      // 
+      this.menuTrayMenuSep04.Index = 12;
+      this.menuTrayMenuSep04.Text = "-";
+      // 
       // menuTrayMenuExit
       // 
-      this.menuTrayMenuExit.Index = 10;
+      this.menuTrayMenuExit.Index = 13;
       this.menuTrayMenuExit.Text = "E&xit";
       this.menuTrayMenuExit.Click += new System.EventHandler(this.menuTrayMenuExit_Click);
       // 
@@ -294,6 +319,12 @@ namespace iTuner
       this.lblTrack.TabIndex = 0;
       this.lblTrack.Text = "Track/Total";
       // 
+      // menuTrayMenuAbout
+      // 
+      this.menuTrayMenuAbout.Index = 11;
+      this.menuTrayMenuAbout.Text = "&About...";
+      this.menuTrayMenuAbout.Click += new System.EventHandler(this.menuTrayMenuAbout_Click);
+      // 
       // frmMain
       // 
       this.AutoScale = false;
@@ -303,7 +334,6 @@ namespace iTuner
       this.ControlBox = false;
       this.Controls.AddRange(new System.Windows.Forms.Control[] {
                                                                   this.panPopup});
-      this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
       this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
       this.MaximizeBox = false;
       this.MinimizeBox = false;
@@ -333,6 +363,11 @@ namespace iTuner
     }
     
     #region Menu Events
+    
+    private void menuTrayMenu_Popup (object sender, System.EventArgs e)
+    {
+      menuTrayMenuStopAfterCurrent.Checked = stopAfterCurrent;
+    }
     
     private void menuTrayMenuShow_Click (object sender, System.EventArgs e)
     {
@@ -380,31 +415,25 @@ namespace iTuner
     
     private void menuTrayMenuNext_Click (object sender, System.EventArgs e)
     {
-      try
-      {
-        iTunesControl.NextTrack();
-      }
-      catch(COMException)
-      {
-      }
+      doNextTrack();
     }
     
     private void menuTrayMenuPrev_Click (object sender, System.EventArgs e)
     {
-      try
-      {
-        iTunesControl.PreviousTrack();
-				
-      }
-      catch (COMException)
-      {
-      }
+      doPreviousTrack();
     }
-
+    
+    private void menuTrayMenuStopAfterCurrent_Click(object sender, System.EventArgs e)
+    {
+      stopAfterCurrent = !stopAfterCurrent;
+    }
+    
     private void menuTrayMenuPreferences_Click (object sender, System.EventArgs e)
     {
       doPreferences();
     }
+    private void menuTrayMenuAbout_Click (object sender, System.EventArgs e)
+    { doAbout(); }
     
     private void menuTrayMenuExit_Click (object sender, System.EventArgs e)
     {
@@ -428,67 +457,41 @@ namespace iTuner
     private void picArtwork_Click(object sender, System.EventArgs e)
     { doHide(); }
     
-    private void iTunesControl_OnPlayerEvent (object iTrack)
+    private void iTunesControl_OnTrackChangedEvent (object iTrack)
     {
       IITTrack track = (IITTrack)iTrack;
-      
-      if (iTunesControl.PlayerState == ITPlayerState.ITPlayerStateStopped)
+      popupTrackInfo(track);
+    }
+    private void iTunesControl_OnStopEvent (object iTrack)
+    {
+      IITTrack track = (IITTrack)iTrack;
+      if (iTunesControl.PlayerState == ITPlayerState.ITPlayerStatePlaying)
       {
-        picArtwork.Visible = false;
-        lblTitle.Left = 0;
-        lblAuthor.Left = 0;
-        lblTitle.Width = panPopup.ClientSize.Width-lblTitle.Left;
-        lblAuthor.Width = panPopup.ClientSize.Width-lblAuthor.Left;
-        if (iTunesControl.PlayerPosition != 0) return;
-        lblTrack.Text = "";
-        lblPlaylist.Text = "";
-        lblTitle.Text = "";
-        lblAuthor.Text = "Playback Stopped";
-      }
-      else
-      {
-        if ((track.Artwork != null) && (track.Artwork.Count >= 1))
+        if (stopAfterCurrent)
         {
-          picArtwork.Visible = true;
-          // Fetch artwork belonging to currently playing track
-          // Extract artwork and save to folder.jpg file
-          // Note: SaveArtworkToFile needs fully qualified path
-          // Note: Track.Artwork is 1-indexed.
-          string path = Path.GetTempFileName();
-          IITArtwork art = track.Artwork[1];
-          art.SaveArtworkToFile(path);
-          // Read file to memory
-          MemoryStream ms = new MemoryStream();
-          FileStream fs = new FileStream(path, FileMode.Open);
-          byte[] buffer = new byte[fs.Length];
-          fs.Read(buffer, 0, (int)fs.Length);
-          ms.Write(buffer, 0, buffer.Length);
-          ms.Seek(0, SeekOrigin.Begin);
-          fs.Close();
-          File.Delete(path);
-          picArtwork.Image = Image.FromStream(ms);
-          lblTitle.Left = picArtwork.Right + 4;
-          lblAuthor.Left = picArtwork.Right + 4;
-          lblTitle.Width = panPopup.ClientSize.Width-lblTitle.Left;
-          lblAuthor.Width = panPopup.ClientSize.Width-lblAuthor.Left;
+          iTunesControl.Stop();
+          iTunesControl.BackTrack();
+          stopAfterCurrent = false;
+          return;
         }
-        else
-        {
-          picArtwork.Visible = false;
-          lblTitle.Left = 0;
-          lblAuthor.Left = 0;
-          lblTitle.Width = panPopup.ClientSize.Width-lblTitle.Left;
-          lblAuthor.Width = panPopup.ClientSize.Width-lblAuthor.Left;
-        }
-        
-        lblTrack.Text = String.Format("{0}/{1}", track.PlayOrderIndex, track.Playlist.Tracks.Count);
-        lblPlaylist.Text = track.Playlist.Name;
-        lblTitle.Text = String.Format("{0} ({1})", track.Name, track.Time);
-        lblAuthor.Text = track.Artist;
-        notifyNotifyIcon.Text = String.Format("{0} - {1}", track.Artist, track.Name);
+        return;
       }
-      
+      picArtwork.Visible = false;
+      lblTitle.Left = 0;
+      lblAuthor.Left = 0;
+      lblTitle.Width = panPopup.ClientSize.Width-lblTitle.Left;
+      lblAuthor.Width = panPopup.ClientSize.Width-lblAuthor.Left;
+      if (iTunesControl.PlayerPosition != 0) return;
+      lblTrack.Text = "";
+      lblPlaylist.Text = "";
+      lblTitle.Text = "";
+      lblAuthor.Text = "Playback Stopped";
       doShow();
+    }
+    private void iTunesControl_OnPlayEvent (object iTrack)
+    {
+      IITTrack track = (IITTrack)iTrack;
+      popupTrackInfo(track);
     }
     
     private void timerClose_Tick (object sender, System.EventArgs e)
@@ -505,6 +508,49 @@ namespace iTuner
         timerClose.Start();
       else
         timerClose.Stop();
+    }
+    
+    void popupTrackInfo (IITTrack track)
+    {
+      if ((track.Artwork != null) && (track.Artwork.Count >= 1))
+      {
+        picArtwork.Visible = true;
+        // Fetch artwork belonging to currently playing track
+        // Extract artwork and save to folder.jpg file
+        // Note: SaveArtworkToFile needs fully qualified path
+        // Note: Track.Artwork is 1-indexed.
+        string path = Path.GetTempFileName();
+        IITArtwork art = track.Artwork[1];
+        art.SaveArtworkToFile(path);
+        // Read file to memory
+        MemoryStream ms = new MemoryStream();
+        FileStream fs = new FileStream(path, FileMode.Open);
+        byte[] buffer = new byte[fs.Length];
+        fs.Read(buffer, 0, (int)fs.Length);
+        ms.Write(buffer, 0, buffer.Length);
+        ms.Seek(0, SeekOrigin.Begin);
+        fs.Close();
+        File.Delete(path);
+        picArtwork.Image = Image.FromStream(ms);
+        lblTitle.Left = picArtwork.Right + 4;
+        lblAuthor.Left = picArtwork.Right + 4;
+        lblTitle.Width = panPopup.ClientSize.Width-lblTitle.Left;
+        lblAuthor.Width = panPopup.ClientSize.Width-lblAuthor.Left;
+      }
+      else
+      {
+        picArtwork.Visible = false;
+        lblTitle.Left = 0;
+        lblAuthor.Left = 0;
+        lblTitle.Width = panPopup.ClientSize.Width-lblTitle.Left;
+        lblAuthor.Width = panPopup.ClientSize.Width-lblAuthor.Left;
+      }
+      lblTrack.Text = String.Format("{0}/{1}", track.PlayOrderIndex, track.Playlist.Tracks.Count);
+      lblPlaylist.Text = track.Playlist.Name;
+      lblTitle.Text = String.Format("{0} ({1})", track.Name, track.Time);
+      lblAuthor.Text = track.Artist;
+      notifyNotifyIcon.Text = String.Format("{0} - {1}", track.Artist, track.Name);
+      doShow();
     }
     
     void setHotkeys ()
@@ -524,6 +570,7 @@ namespace iTuner
     {
       for (int i = 0; i < hotkeys.Length; i++)
       {
+        if (hotkeys[i].Atom == 0) continue;
         Win32.UnregisterHotKey(this.Handle, hotkeys[i].Atom);
         Win32.GlobalDeleteAtom(hotkeys[i].Atom);
         hotkeys[i].Atom = 0;
@@ -564,6 +611,11 @@ namespace iTuner
       setHotkeys();
     }
     
+    void doAbout ()
+    {
+      (new frmAbout()).ShowDialog(this);
+    }
+    
     protected override void WndProc (ref Message m)
     {
       switch (m.Msg)
@@ -571,17 +623,19 @@ namespace iTuner
         case Win32.WM_HOTKEY:
         {
           int key = ((int)m.LParam) >> 16;
+          int mod = ((int)m.LParam) << 16 >> 16;
           for (int i = 0; i < hotkeys.Length; i++)
           {
-            if (key != hotkeys[i].KeyValue) continue;
+            if ((key != hotkeys[i].KeyValue) || (mod != hotkeys[i].Modifiers)) continue;
             switch (hotkeys[i].Action)
             {
               case HotkeyAction.ShowBrowser: iTunesControl.BrowserWindow.Visible = true; break;
               case HotkeyAction.Play: iTunesControl.Play(); break;
               case HotkeyAction.PlayPause: iTunesControl.PlayPause(); break;
               case HotkeyAction.Stop: iTunesControl.Stop(); break;
-              case HotkeyAction.NextSong: iTunesControl.NextTrack(); break;
-              case HotkeyAction.PreviousSong: iTunesControl.PreviousTrack(); break;
+              case HotkeyAction.NextSong: doNextTrack(); break;
+              case HotkeyAction.PreviousSong: doPreviousTrack(); break;
+              case HotkeyAction.ToggleStopAfterCurrent: stopAfterCurrent = !stopAfterCurrent; break;
             }
           }
           break;
@@ -591,6 +645,30 @@ namespace iTuner
           base.WndProc(ref m);
           break;
         }
+      }
+    }
+    
+    void doPreviousTrack ()
+    {
+      try
+      {
+        stopAfterCurrent = false;
+        iTunesControl.PreviousTrack();
+      }
+      catch (COMException)
+      {
+      }
+    }
+    
+    void doNextTrack ()
+    {
+      try
+      {
+        stopAfterCurrent = false;
+        iTunesControl.NextTrack();
+      }
+      catch (COMException)
+      {
       }
     }
   }

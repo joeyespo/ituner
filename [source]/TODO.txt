@@ -1,0 +1,8 @@
+iTuner ToDo
+------------
+
+* "Stop after current song"
+- Save preferences
+- Smoother UI popup transitions
+- Timer issue
+- Load iTunes on startup

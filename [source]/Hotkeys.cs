@@ -11,6 +11,7 @@ namespace iTuner
     Stop,
     NextSong,
     PreviousSong,
+    ToggleStopAfterCurrent,
   }
   
 	public struct HotkeyItem
@@ -33,9 +34,9 @@ namespace iTuner
     {
       string s = "";
       if ((KeyValue != (int)Keys.ControlKey) && (KeyValue != (int)Keys.ShiftKey) && (KeyValue != (int)Keys.Menu) && (KeyValue != 0)) s = ((Keys)KeyValue).ToString();
-      if ((Modifiers & (int)Keys.Alt) != 0) s = "Alt + " + s;
-      if ((Modifiers & (int)Keys.Shift) != 0) s = "Shift + " + s;
-      if ((Modifiers & (int)Keys.Control) != 0) s = "Control + " + s;
+      if ((Modifiers & Win32.MOD_ALT) != 0) s = "Alt + " + s;
+      if ((Modifiers & Win32.MOD_SHIFT) != 0) s = "Shift + " + s;
+      if ((Modifiers & Win32.MOD_CONTROL) != 0) s = "Control + " + s;
       return Action.ToString() + ": " + s;
     }
   }

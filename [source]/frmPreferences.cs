@@ -130,7 +130,8 @@ namespace iTuner
                                                             "Playback: Play/Pause",
                                                             "Playback: Stop",
                                                             "Playback: Next Song",
-                                                            "Playback: Previous Song"});
+                                                            "Playback: Previous Song",
+                                                            "Playback: Toggle Stop After Current"});
       this.comboHotkeyActions.Location = new System.Drawing.Point(8, 224);
       this.comboHotkeyActions.Name = "comboHotkeyActions";
       this.comboHotkeyActions.Size = new System.Drawing.Size(412, 21);
@@ -246,7 +247,11 @@ namespace iTuner
     private void btnAdd_Click (object sender, System.EventArgs e)
     {
       if (key == 0) return;
-      listHotkeys.Items.Add(new HotkeyItem(getHotkeyAction(), key, mod));
+      int real_mod = 0;
+      if ((mod & (int)Keys.Alt) != 0) real_mod |= Win32.MOD_ALT;
+      if ((mod & (int)Keys.Shift) != 0) real_mod |= Win32.MOD_SHIFT;
+      if ((mod & (int)Keys.Control) != 0) real_mod |= Win32.MOD_CONTROL;
+      listHotkeys.Items.Add(new HotkeyItem(getHotkeyAction(), key, real_mod));
     }
     private void btnSet_Click (object sender, System.EventArgs e)
     {
@@ -282,6 +287,7 @@ namespace iTuner
         case 3: return HotkeyAction.Stop;
         case 4: return HotkeyAction.NextSong;
         case 5: return HotkeyAction.PreviousSong;
+        case 6: return HotkeyAction.ToggleStopAfterCurrent;
         default:return HotkeyAction.PlayPause;
       }
     }
@@ -295,6 +301,7 @@ namespace iTuner
         case HotkeyAction.Stop: comboHotkeyActions.SelectedIndex = 3; break;
         case HotkeyAction.NextSong: comboHotkeyActions.SelectedIndex = 4; break;
         case HotkeyAction.PreviousSong: comboHotkeyActions.SelectedIndex = 5; break;
+        case HotkeyAction.ToggleStopAfterCurrent: comboHotkeyActions.SelectedIndex = 6; break;
         default: comboHotkeyActions.SelectedIndex = -1; break;
       }
     }
