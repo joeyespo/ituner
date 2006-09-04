@@ -1,6 +1,8 @@
 using System;
 using System.IO;
 using System.Drawing;
+using System.Drawing.Imaging;
+using System.Threading;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
@@ -13,9 +15,17 @@ namespace iTuner
   /// </summary>
   public class frmMain : System.Windows.Forms.Form
   {
+    readonly Size DefaultNotifySize = new Size(324, 98);
     HotkeyItem [] hotkeys = new HotkeyItem [0];
     iTunesApp iTunesControl;
     bool stopAfterCurrent = false;
+    Image currentArtwork = null;
+    Bitmap backbuffer = null;
+    Font fontStatus = new Font("Arial", 8, FontStyle.Regular);
+    Font fontTitle = new Font("Arial", 10, FontStyle.Bold);
+    Font fontAuthor = new Font("Arial", 10, FontStyle.Regular);
+    Thread artworkThread = null;
+    IITTrack artworkTrack = null;
     
     #region Class Variables
     
@@ -30,15 +40,9 @@ namespace iTuner
     private System.Windows.Forms.MenuItem menuTrayMenuSep01;
     private System.Windows.Forms.MenuItem menuTrayMenuExit;
     private System.Windows.Forms.MenuItem menuTrayMenuSep02;
-    private System.Windows.Forms.Panel panPopup;
     private System.Windows.Forms.MenuItem menuTrayMenuPreferences;
     private System.Windows.Forms.MenuItem menuTrayMenuShow;
     private System.Windows.Forms.MenuItem menuTrayMenuSep03;
-    private System.Windows.Forms.Label lblTrack;
-    private System.Windows.Forms.Label lblAuthor;
-    private System.Windows.Forms.Label lblTitle;
-    private System.Windows.Forms.Label lblPlaylist;
-    private System.Windows.Forms.PictureBox picArtwork;
     private System.Windows.Forms.MenuItem menuTrayMenuStopAfterCurrent;
     private System.Windows.Forms.MenuItem menuTrayMenuSep04;
     private System.Windows.Forms.MenuItem menuTrayMenuAbout;
@@ -55,6 +59,7 @@ namespace iTuner
       //
       InitializeComponent();
       this.FormBorderStyle = FormBorderStyle.None;
+      this.Size = DefaultNotifySize;
       
       try
       {
@@ -70,6 +75,13 @@ namespace iTuner
         Application.Exit();
         return;
       }
+      
+      this.SetStyle(ControlStyles.AllPaintingInWmPaint, true);
+      this.SetStyle(ControlStyles.DoubleBuffer, true);
+      this.SetStyle(ControlStyles.Opaque, true);
+      this.SetStyle(ControlStyles.UserPaint, true);
+      backbuffer = new Bitmap(DefaultNotifySize.Width, DefaultNotifySize.Height, PixelFormat.Format32bppRgb);
+      renderClear();
       
       int desktopWidth = Screen.PrimaryScreen.WorkingArea.Width;
       int desktopHeight = Screen.PrimaryScreen.WorkingArea.Height;
@@ -123,18 +135,10 @@ namespace iTuner
       this.menuTrayMenuStopAfterCurrent = new System.Windows.Forms.MenuItem();
       this.menuTrayMenuSep03 = new System.Windows.Forms.MenuItem();
       this.menuTrayMenuPreferences = new System.Windows.Forms.MenuItem();
+      this.menuTrayMenuAbout = new System.Windows.Forms.MenuItem();
       this.menuTrayMenuSep04 = new System.Windows.Forms.MenuItem();
       this.menuTrayMenuExit = new System.Windows.Forms.MenuItem();
-      this.lblAuthor = new System.Windows.Forms.Label();
-      this.lblTitle = new System.Windows.Forms.Label();
       this.timerClose = new System.Windows.Forms.Timer(this.components);
-      this.panPopup = new System.Windows.Forms.Panel();
-      this.picArtwork = new System.Windows.Forms.PictureBox();
-      this.lblPlaylist = new System.Windows.Forms.Label();
-      this.lblTrack = new System.Windows.Forms.Label();
-      this.menuTrayMenuAbout = new System.Windows.Forms.MenuItem();
-      this.panPopup.SuspendLayout();
-      this.SuspendLayout();
       // 
       // notifyNotifyIcon
       // 
@@ -227,6 +231,12 @@ namespace iTuner
       this.menuTrayMenuPreferences.Text = "Pre&ferences...";
       this.menuTrayMenuPreferences.Click += new System.EventHandler(this.menuTrayMenuPreferences_Click);
       // 
+      // menuTrayMenuAbout
+      // 
+      this.menuTrayMenuAbout.Index = 11;
+      this.menuTrayMenuAbout.Text = "&About...";
+      this.menuTrayMenuAbout.Click += new System.EventHandler(this.menuTrayMenuAbout_Click);
+      // 
       // menuTrayMenuSep04
       // 
       this.menuTrayMenuSep04.Index = 12;
@@ -238,92 +248,10 @@ namespace iTuner
       this.menuTrayMenuExit.Text = "E&xit";
       this.menuTrayMenuExit.Click += new System.EventHandler(this.menuTrayMenuExit_Click);
       // 
-      // lblAuthor
-      // 
-      this.lblAuthor.Anchor = ((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-        | System.Windows.Forms.AnchorStyles.Right);
-      this.lblAuthor.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((System.Byte)(0)));
-      this.lblAuthor.Location = new System.Drawing.Point(0, 44);
-      this.lblAuthor.Name = "lblAuthor";
-      this.lblAuthor.Size = new System.Drawing.Size(314, 15);
-      this.lblAuthor.TabIndex = 0;
-      this.lblAuthor.Text = "Artist";
-      this.lblAuthor.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-      this.lblAuthor.Click += new System.EventHandler(this.m_ArtistLabel_Click);
-      // 
-      // lblTitle
-      // 
-      this.lblTitle.Anchor = ((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-        | System.Windows.Forms.AnchorStyles.Right);
-      this.lblTitle.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((System.Byte)(0)));
-      this.lblTitle.Location = new System.Drawing.Point(0, 24);
-      this.lblTitle.Name = "lblTitle";
-      this.lblTitle.Size = new System.Drawing.Size(314, 15);
-      this.lblTitle.TabIndex = 1;
-      this.lblTitle.Text = "Title (Time)";
-      this.lblTitle.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-      this.lblTitle.Click += new System.EventHandler(this.m_TitleLabel_Click);
-      // 
       // timerClose
       // 
       this.timerClose.Interval = 10000;
       this.timerClose.Tick += new System.EventHandler(this.timerClose_Tick);
-      // 
-      // panPopup
-      // 
-      this.panPopup.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-      this.panPopup.Controls.AddRange(new System.Windows.Forms.Control[] {
-                                                                           this.picArtwork,
-                                                                           this.lblPlaylist,
-                                                                           this.lblTrack,
-                                                                           this.lblTitle,
-                                                                           this.lblAuthor});
-      this.panPopup.Dock = System.Windows.Forms.DockStyle.Fill;
-      this.panPopup.Name = "panPopup";
-      this.panPopup.Size = new System.Drawing.Size(316, 64);
-      this.panPopup.TabIndex = 2;
-      this.panPopup.Click += new System.EventHandler(this.panPopup_Click);
-      // 
-      // picArtwork
-      // 
-      this.picArtwork.Anchor = ((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-        | System.Windows.Forms.AnchorStyles.Left);
-      this.picArtwork.BackColor = System.Drawing.Color.White;
-      this.picArtwork.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-      this.picArtwork.Location = new System.Drawing.Point(4, 20);
-      this.picArtwork.Name = "picArtwork";
-      this.picArtwork.Size = new System.Drawing.Size(38, 38);
-      this.picArtwork.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
-      this.picArtwork.TabIndex = 3;
-      this.picArtwork.TabStop = false;
-      this.picArtwork.Click += new System.EventHandler(this.picArtwork_Click);
-      this.picArtwork.SizeChanged += new System.EventHandler(this.picArtwork_SizeChanged);
-      // 
-      // lblPlaylist
-      // 
-      this.lblPlaylist.Anchor = (System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right);
-      this.lblPlaylist.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((System.Byte)(0)));
-      this.lblPlaylist.Location = new System.Drawing.Point(160, 4);
-      this.lblPlaylist.Name = "lblPlaylist";
-      this.lblPlaylist.Size = new System.Drawing.Size(152, 13);
-      this.lblPlaylist.TabIndex = 2;
-      this.lblPlaylist.Text = "Status";
-      this.lblPlaylist.TextAlign = System.Drawing.ContentAlignment.TopRight;
-      // 
-      // lblTrack
-      // 
-      this.lblTrack.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((System.Byte)(0)));
-      this.lblTrack.Location = new System.Drawing.Point(4, 4);
-      this.lblTrack.Name = "lblTrack";
-      this.lblTrack.Size = new System.Drawing.Size(148, 15);
-      this.lblTrack.TabIndex = 0;
-      this.lblTrack.Text = "Track/Total";
-      // 
-      // menuTrayMenuAbout
-      // 
-      this.menuTrayMenuAbout.Index = 11;
-      this.menuTrayMenuAbout.Text = "&About...";
-      this.menuTrayMenuAbout.Click += new System.EventHandler(this.menuTrayMenuAbout_Click);
       // 
       // frmMain
       // 
@@ -332,8 +260,6 @@ namespace iTuner
       this.BackColor = System.Drawing.Color.AliceBlue;
       this.ClientSize = new System.Drawing.Size(316, 64);
       this.ControlBox = false;
-      this.Controls.AddRange(new System.Windows.Forms.Control[] {
-                                                                  this.panPopup});
       this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
       this.MaximizeBox = false;
       this.MinimizeBox = false;
@@ -342,9 +268,9 @@ namespace iTuner
       this.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
       this.Text = "iTunes Control";
       this.TopMost = true;
+      this.Click += new System.EventHandler(this.frmMain_Click);
       this.VisibleChanged += new System.EventHandler(this.frmMain_VisibleChanged);
-      this.panPopup.ResumeLayout(false);
-      this.ResumeLayout(false);
+      this.Paint += new System.Windows.Forms.PaintEventHandler(this.frmMain_Paint);
 
     }
 		
@@ -445,9 +371,10 @@ namespace iTuner
     
     #endregion
     
-    private void picArtwork_SizeChanged (object sender, System.EventArgs e)
-    { if (picArtwork.Width != picArtwork.Height) picArtwork.Width = picArtwork.Height; }
+    #region Control Events
     
+    private void frmMain_Click(object sender, System.EventArgs e)
+    { doHide(); }
     private void m_TitleLabel_Click (object sender, System.EventArgs e)
     { doHide(); }
     private void m_ArtistLabel_Click (object sender, System.EventArgs e)
@@ -460,7 +387,7 @@ namespace iTuner
     private void iTunesControl_OnTrackChangedEvent (object iTrack)
     {
       IITTrack track = (IITTrack)iTrack;
-      popupTrackInfo(track);
+      notify(track);
     }
     private void iTunesControl_OnStopEvent (object iTrack)
     {
@@ -476,22 +403,14 @@ namespace iTuner
         }
         return;
       }
-      picArtwork.Visible = false;
-      lblTitle.Left = 0;
-      lblAuthor.Left = 0;
-      lblTitle.Width = panPopup.ClientSize.Width-lblTitle.Left;
-      lblAuthor.Width = panPopup.ClientSize.Width-lblAuthor.Left;
       if (iTunesControl.PlayerPosition != 0) return;
-      lblTrack.Text = "";
-      lblPlaylist.Text = "";
-      lblTitle.Text = "";
-      lblAuthor.Text = "Playback Stopped";
+      renderStopped();
       doShow();
     }
     private void iTunesControl_OnPlayEvent (object iTrack)
     {
       IITTrack track = (IITTrack)iTrack;
-      popupTrackInfo(track);
+      notify(track);
     }
     
     private void timerClose_Tick (object sender, System.EventArgs e)
@@ -510,47 +429,78 @@ namespace iTuner
         timerClose.Stop();
     }
     
-    void popupTrackInfo (IITTrack track)
+    #endregion
+    
+    void notify (IITTrack track)
     {
+      currentArtwork = null;
+      artworkTrack = null;
+      if (artworkThread != null)
+      {
+        if (artworkThread.ThreadState == ThreadState.Running)
+          artworkThread.Abort();
+      }
       if ((track.Artwork != null) && (track.Artwork.Count >= 1))
       {
-        picArtwork.Visible = true;
+        artworkThread = new Thread(new ThreadStart(ArtworkThread));
+        artworkTrack = track;
+        artworkThread.Start();
+        // Small wait for thread to finish
+        artworkThread.Join(500);
+      }
+      
+      notifyNotifyIcon.Text = String.Format("{0} - {1}", track.Artist, track.Name);
+      render(track);
+      doShow();
+    }
+    
+    void ArtworkThread ()
+    {
+      IITTrack track = artworkTrack;
+      if ((track.Artwork != null) && (track.Artwork.Count >= 1))
+      {
         // Fetch artwork belonging to currently playing track
         // Extract artwork and save to folder.jpg file
         // Note: SaveArtworkToFile needs fully qualified path
         // Note: Track.Artwork is 1-indexed.
+        bool b = true;
         string path = Path.GetTempFileName();
         IITArtwork art = track.Artwork[1];
-        art.SaveArtworkToFile(path);
-        // Read file to memory
-        MemoryStream ms = new MemoryStream();
-        FileStream fs = new FileStream(path, FileMode.Open);
-        byte[] buffer = new byte[fs.Length];
-        fs.Read(buffer, 0, (int)fs.Length);
-        ms.Write(buffer, 0, buffer.Length);
-        ms.Seek(0, SeekOrigin.Begin);
-        fs.Close();
-        File.Delete(path);
-        picArtwork.Image = Image.FromStream(ms);
-        lblTitle.Left = picArtwork.Right + 4;
-        lblAuthor.Left = picArtwork.Right + 4;
-        lblTitle.Width = panPopup.ClientSize.Width-lblTitle.Left;
-        lblAuthor.Width = panPopup.ClientSize.Width-lblAuthor.Left;
+        try
+        {
+          art.SaveArtworkToFile(path);
+        }
+        catch (COMException)
+        { b = false; }
+        Image artwork = null;
+        if (b)
+        {
+          try
+          {
+            using (Stream stream = File.OpenRead(path))
+            {
+              stream.Seek(0, SeekOrigin.Begin);
+              using (StreamView view = new StreamView(stream, 0, stream.Length))
+              {
+                artwork = Image.FromStream(view);
+              }
+            }
+          }
+          catch (IOException)
+          { b = false; }
+        }
+        try
+        {
+          File.Delete(path);
+        }
+        catch (IOException)
+        {}
+        Bitmap bitmap = new Bitmap(artwork.Width, artwork.Height, PixelFormat.Format32bppRgb);
+        using (Graphics g = Graphics.FromImage(bitmap))
+        { g.DrawImage(artwork, new Rectangle(new Point(0, 0), bitmap.Size), 0, 0, artwork.Width, artwork.Height, GraphicsUnit.Pixel); }
+        currentArtwork = bitmap;
       }
-      else
-      {
-        picArtwork.Visible = false;
-        lblTitle.Left = 0;
-        lblAuthor.Left = 0;
-        lblTitle.Width = panPopup.ClientSize.Width-lblTitle.Left;
-        lblAuthor.Width = panPopup.ClientSize.Width-lblAuthor.Left;
-      }
-      lblTrack.Text = String.Format("{0}/{1}", track.PlayOrderIndex, track.Playlist.Tracks.Count);
-      lblPlaylist.Text = track.Playlist.Name;
-      lblTitle.Text = String.Format("{0} ({1})", track.Name, track.Time);
-      lblAuthor.Text = track.Artist;
-      notifyNotifyIcon.Text = String.Format("{0} - {1}", track.Artist, track.Name);
-      doShow();
+      render(track);
     }
     
     void setHotkeys ()
@@ -670,6 +620,72 @@ namespace iTuner
       catch (COMException)
       {
       }
+    }
+    
+    private void frmMain_Paint (object sender, System.Windows.Forms.PaintEventArgs e)
+    {
+      e.Graphics.DrawImage(backbuffer, new Rectangle(new Point(0, 0), this.Size), 0, 0, backbuffer.Width, backbuffer.Height, GraphicsUnit.Pixel);
+    }
+    
+    void renderClear ()
+    {
+      using (Graphics g = Graphics.FromImage(backbuffer))
+      { render(g); }
+      this.Invalidate();
+    }
+    void render (Graphics g)
+    {
+      g.Clear(Color.AliceBlue);
+      g.DrawRectangle(Pens.Black, 0, 0, this.Width-1, this.Height-1);
+    }
+    
+    void renderStopped ()
+    {
+      using (Graphics g = Graphics.FromImage(backbuffer))
+      { renderStopped(g); }
+      this.Invalidate();
+    }
+    void renderStopped (Graphics g)
+    {
+      string text = "Playback Stopped";
+      
+      render(g);
+      
+      SizeF size = g.MeasureString(text, fontTitle);
+      g.DrawString(text, fontTitle, Brushes.Black, (this.Width - size.Width) / 2, 44);
+    }
+    
+    void render (IITTrack track)
+    {
+      using (Graphics g = Graphics.FromImage(backbuffer))
+      { render(track, g); }
+      this.Invalidate();
+    }
+    void render (IITTrack track, Graphics g)
+    {
+      string tracknum = String.Format("{0}/{1}", track.PlayOrderIndex, track.Playlist.Tracks.Count);
+      string playlist = track.Playlist.Name;
+      string title = String.Format("{0} ({1})", track.Name, track.Time);
+      string author = track.Artist;
+      SizeF size;
+      
+      render(g);
+      
+      if (currentArtwork != null)
+      {
+        ImageAttributes attr = new ImageAttributes();
+        ColorMatrix cm = new ColorMatrix();
+        cm.Matrix33 = 0.20f;
+        attr.SetColorMatrix(cm, ColorMatrixFlag.Default, ColorAdjustType.Bitmap);
+        g.DrawImage(currentArtwork, new Rectangle(0, (this.Height-this.Width+14+8)/2, this.Width, this.Width), 0, 0, currentArtwork.Width, currentArtwork.Height, GraphicsUnit.Pixel, attr);
+      }
+      g.DrawString(tracknum, fontStatus, Brushes.Black, 4, 4);
+      size = g.MeasureString(playlist, fontStatus);
+      g.DrawString(playlist, fontStatus, Brushes.Black, this.Width - size.Width, 4);
+      size = g.MeasureString(title, fontTitle);
+      g.DrawString(title, fontTitle, Brushes.Black, (this.Width - size.Width) / 2, 34);
+      size = g.MeasureString(author, fontAuthor);
+      g.DrawString(author, fontAuthor, Brushes.Black, (this.Width - size.Width) / 2, 54);
     }
   }
 }

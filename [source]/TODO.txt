@@ -2,6 +2,7 @@ iTuner ToDo
 ------------
 
 * "Stop after current song"
+- Fix album art problem - locks up application
 - Save preferences
 - Smoother UI popup transitions
 - Timer issue
