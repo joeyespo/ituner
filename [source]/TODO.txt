@@ -2,8 +2,11 @@ iTuner ToDo
 ------------
 
 * "Stop after current song"
-- Fix album art problem - locks up application
-- Save preferences
-- Smoother UI popup transitions
-- Timer issue
-- Load iTunes on startup
+* Load iTunes on startup
+* Fix album art problem - locks up application
+* Save preferences
+* Smoother UI popup transitions
+* Timer issue
+* Topmost notification window
+* Preference: Show Notification window on: startup, song change, play, stop
+* Preference: Notification Window autohide time

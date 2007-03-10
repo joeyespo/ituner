@@ -14,13 +14,15 @@ namespace iTuner
     ToggleStopAfterCurrent,
   }
   
-	public struct HotkeyItem
+  [Serializable()]
+  public class HotkeyItem
 	{
+    public HotkeyItem () : this(HotkeyAction.Play, 0)
+    {}
     public HotkeyItem (HotkeyAction action, int keyValue) : this(action, keyValue, 0)
     {}
     public HotkeyItem (HotkeyAction action, int keyValue, int modifiers)
     {
-      Atom = 0;
       Action = action;
       KeyValue = keyValue;
       Modifiers = modifiers;
@@ -28,7 +30,6 @@ namespace iTuner
     public HotkeyAction Action;
     public int KeyValue;
     public int Modifiers;
-    public int Atom;
     
     public override string ToString ()
     {

@@ -10,20 +10,26 @@ using iTunesLib;
 
 namespace iTuner
 {
-  /// <summary>
-  /// Summary description for Form1.
-  /// </summary>
   public class frmMain : System.Windows.Forms.Form
   {
-    readonly Size DefaultNotifySize = new Size(324, 98);
-    HotkeyItem [] hotkeys = new HotkeyItem [0];
+    class ExitException : Exception
+    {}
+    
+    public readonly Size DefaultNotifySize = new Size(324, 98);
+    int currentHideTime = 0;
+    bool hideTiming = false;
+    iTunerSettings settings = new iTunerSettings();
+    int [] hotkeyAtoms = new int [0];
     iTunesApp iTunesControl;
     bool stopAfterCurrent = false;
     Image currentArtwork = null;
+    Image nullArtwork = null;
     Bitmap backbuffer = null;
     Font fontStatus = new Font("Arial", 8, FontStyle.Regular);
+    Font fontPlaylist = new Font("Arial", 8, FontStyle.Regular);
     Font fontTitle = new Font("Arial", 10, FontStyle.Bold);
     Font fontAuthor = new Font("Arial", 10, FontStyle.Regular);
+    Font fontAlbum = new Font("Arial", 10, FontStyle.Regular);
     Thread artworkThread = null;
     IITTrack artworkTrack = null;
     
@@ -45,8 +51,8 @@ namespace iTuner
     private System.Windows.Forms.MenuItem menuTrayMenuSep03;
     private System.Windows.Forms.MenuItem menuTrayMenuStopAfterCurrent;
     private System.Windows.Forms.MenuItem menuTrayMenuSep04;
-    private System.Windows.Forms.MenuItem menuTrayMenuAbout;
     private System.Windows.Forms.Timer timerClose;
+    private System.Windows.Forms.MenuItem menuTrayMenuAbout;
     
     #endregion
     
@@ -72,16 +78,16 @@ namespace iTuner
       catch (COMException)
       {
         MessageBox.Show(this, "Could not interface with iTunes. Exiting.", "iTuner", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
-        Application.Exit();
-        return;
+        throw new ExitException();
       }
       
       this.SetStyle(ControlStyles.AllPaintingInWmPaint, true);
       this.SetStyle(ControlStyles.DoubleBuffer, true);
       this.SetStyle(ControlStyles.Opaque, true);
       this.SetStyle(ControlStyles.UserPaint, true);
+      
       backbuffer = new Bitmap(DefaultNotifySize.Width, DefaultNotifySize.Height, PixelFormat.Format32bppRgb);
-      renderClear();
+      aquireNullArtwork();
       
       int desktopWidth = Screen.PrimaryScreen.WorkingArea.Width;
       int desktopHeight = Screen.PrimaryScreen.WorkingArea.Height;
@@ -89,13 +95,16 @@ namespace iTuner
       int y = desktopHeight - this.Height;
       this.SetDesktopLocation(x,y);
       
-      hotkeys = new HotkeyItem [5];
-      hotkeys[0] = new HotkeyItem(HotkeyAction.PlayPause, (int)Keys.MediaPlayPause);
-      hotkeys[1] = new HotkeyItem(HotkeyAction.Stop, (int)Keys.MediaStop);
-      hotkeys[2] = new HotkeyItem(HotkeyAction.NextSong, (int)Keys.MediaNextTrack);
-      hotkeys[3] = new HotkeyItem(HotkeyAction.PreviousSong, (int)Keys.MediaPreviousTrack);
-      hotkeys[4] = new HotkeyItem(HotkeyAction.ToggleStopAfterCurrent, (int)Keys.MediaStop, Win32.MOD_CONTROL);
+      settings = iTunerSettings.Load();
+      hotkeyAtoms = new int [settings.Hotkeys.Length];
       setHotkeys();
+      
+      // Show notification window (since starting up), if settings permits
+      if (settings.ShowNotificationWindowOnStartup)
+        notify();
+      
+      // Start the close timer, even if not closing, to keep it going
+      timerClose.Start();
     }
     
 		#region Windows Form Designer generated code
@@ -250,7 +259,7 @@ namespace iTuner
       // 
       // timerClose
       // 
-      this.timerClose.Interval = 10000;
+      this.timerClose.Enabled = true;
       this.timerClose.Tick += new System.EventHandler(this.timerClose_Tick);
       // 
       // frmMain
@@ -269,7 +278,6 @@ namespace iTuner
       this.Text = "iTunes Control";
       this.TopMost = true;
       this.Click += new System.EventHandler(this.frmMain_Click);
-      this.VisibleChanged += new System.EventHandler(this.frmMain_VisibleChanged);
       this.Paint += new System.Windows.Forms.PaintEventHandler(this.frmMain_Paint);
 
     }
@@ -284,113 +292,70 @@ namespace iTuner
     [STAThread]
     static void Main () 
     {
-      frmMain form = new frmMain();
+      try
+      { frmMain form = new frmMain(); }
+      catch (ExitException)
+      { return; }
       Application.Run();
+    }
+    
+    private void frmMain_Paint (object sender, System.Windows.Forms.PaintEventArgs e)
+    {
+      e.Graphics.DrawImage(backbuffer, new Rectangle(new Point(0, 0), this.Size), 0, 0, backbuffer.Width, backbuffer.Height, GraphicsUnit.Pixel);
     }
     
     #region Menu Events
     
-    private void menuTrayMenu_Popup (object sender, System.EventArgs e)
+    private void menuTrayMenu_Popup(object sender, System.EventArgs e)
     {
       menuTrayMenuStopAfterCurrent.Checked = stopAfterCurrent;
     }
     
-    private void menuTrayMenuShow_Click (object sender, System.EventArgs e)
-    {
-      try
-      {
-        iTunesControl.BrowserWindow.Visible = true;
-      }
-      catch (COMException)
-      {
-      }
-    }
+    private void menuTrayMenuShow_Click(object sender, System.EventArgs e)
+    { doShowBrowser(); }
     
-    private void menuTrayMenuPlay_Click (object sender, System.EventArgs e)
-    {
-      try
-      {
-        iTunesControl.Play();
-      }
-      catch (COMException)
-      {
-      }
-    }
+    private void menuTrayMenuPlay_Click(object sender, System.EventArgs e)
+    { doPlay(); }
     
-    private void menuTrayMenuPause_Click (object sender, System.EventArgs e)
-    {
-      try
-      {
-        iTunesControl.Pause();
-      }
-      catch(COMException)
-      {
-      }
-    }
+    private void menuTrayMenuPause_Click(object sender, System.EventArgs e)
+    { doPause(); }
     
-    private void menuTrayMenuStop_Click (object sender, System.EventArgs e)
-    {
-      try
-      {
-        iTunesControl.Stop();
-      }
-      catch(COMException)
-      {
-      }
-    }
+    private void menuTrayMenuStop_Click(object sender, System.EventArgs e)
+    { doStop(); }
     
-    private void menuTrayMenuNext_Click (object sender, System.EventArgs e)
-    {
-      doNextTrack();
-    }
+    private void menuTrayMenuNext_Click(object sender, System.EventArgs e)
+    { doNextTrack(); }
     
-    private void menuTrayMenuPrev_Click (object sender, System.EventArgs e)
-    {
-      doPreviousTrack();
-    }
+    private void menuTrayMenuPrev_Click(object sender, System.EventArgs e)
+    { doPreviousTrack(); }
     
     private void menuTrayMenuStopAfterCurrent_Click(object sender, System.EventArgs e)
-    {
-      stopAfterCurrent = !stopAfterCurrent;
-    }
+    { doToggleStopAfterCurrent(); }
     
-    private void menuTrayMenuPreferences_Click (object sender, System.EventArgs e)
-    {
-      doPreferences();
-    }
-    private void menuTrayMenuAbout_Click (object sender, System.EventArgs e)
+    private void menuTrayMenuPreferences_Click(object sender, System.EventArgs e)
+    { doPreferences(); }
+    private void menuTrayMenuAbout_Click(object sender, System.EventArgs e)
     { doAbout(); }
     
-    private void menuTrayMenuExit_Click (object sender, System.EventArgs e)
-    {
-      clearHotkeys();
-      notifyNotifyIcon.Visible = false;
-      this.Close();
-      Application.Exit();
-    }
+    private void menuTrayMenuExit_Click(object sender, System.EventArgs e)
+    { doExit(); }
     
     #endregion
     
     #region Control Events
     
     private void frmMain_Click(object sender, System.EventArgs e)
-    { doHide(); }
-    private void m_TitleLabel_Click (object sender, System.EventArgs e)
-    { doHide(); }
-    private void m_ArtistLabel_Click (object sender, System.EventArgs e)
-    { doHide(); }
-    private void panPopup_Click (object sender, System.EventArgs e)
-    { doHide(); }
-    private void picArtwork_Click(object sender, System.EventArgs e)
-    { doHide(); }
+    { doHideWindow(); }
     
     private void iTunesControl_OnTrackChangedEvent (object iTrack)
     {
-      IITTrack track = (IITTrack)iTrack;
-      notify(track);
+      if (iTunesControl == null) return;
+      if (settings.ShowNotificationWindowOnSongChange)
+        notify();
     }
     private void iTunesControl_OnStopEvent (object iTrack)
     {
+      if (iTunesControl == null) return;
       IITTrack track = (IITTrack)iTrack;
       if (iTunesControl.PlayerState == ITPlayerState.ITPlayerStatePlaying)
       {
@@ -404,58 +369,212 @@ namespace iTuner
         return;
       }
       if (iTunesControl.PlayerPosition != 0) return;
-      renderStopped();
-      doShow();
+      if (settings.ShowNotificationWindowOnStop)
+        notify();
     }
     private void iTunesControl_OnPlayEvent (object iTrack)
     {
-      IITTrack track = (IITTrack)iTrack;
-      notify(track);
+      if (iTunesControl == null) return;
+      if (settings.ShowNotificationWindowOnPlay)
+        notify();
     }
     
     private void timerClose_Tick (object sender, System.EventArgs e)
-    { doHide(); }
+    {
+      if (hideTiming)
+      {
+        currentHideTime += 1;
+        if (currentHideTime >= settings.HideNotificationWindowAfter*10)
+        {
+          currentHideTime = 0;
+          doHideWindow();
+        }
+      }
+    }
     
     private void notifyNotifyIcon_DoubleClick (object sender, System.EventArgs e)
     {
+      if (iTunesControl == null) return;
       iTunesControl.BrowserWindow.Visible = true;
-    }
-    
-    private void frmMain_VisibleChanged (object sender, System.EventArgs e)
-    {
-      if (this.Visible)
-        timerClose.Start();
-      else
-        timerClose.Stop();
     }
     
     #endregion
     
-    void notify (IITTrack track)
+    #region Do Commands
+    
+    void doShowBrowser ()
     {
-      currentArtwork = null;
-      artworkTrack = null;
-      if (artworkThread != null)
-      {
-        if (artworkThread.ThreadState == ThreadState.Running)
-          artworkThread.Abort();
-      }
-      if ((track.Artwork != null) && (track.Artwork.Count >= 1))
-      {
-        artworkThread = new Thread(new ThreadStart(ArtworkThread));
-        artworkTrack = track;
-        artworkThread.Start();
-        // Small wait for thread to finish
-        artworkThread.Join(500);
-      }
-      
-      notifyNotifyIcon.Text = String.Format("{0} - {1}", track.Artist, track.Name);
-      render(track);
-      doShow();
+      if (iTunesControl == null) return;
+      iTunesControl.BrowserWindow.Visible = true;
     }
+    
+    void doPlay ()
+    {
+      if (iTunesControl == null) return;
+      try
+      {
+        iTunesControl.Play();
+      }
+      catch (COMException)
+      {
+      }
+    }
+    
+    void doPause ()
+    {
+      if (iTunesControl == null) return;
+      try
+      {
+        iTunesControl.Pause();
+      }
+      catch (COMException)
+      {
+      }
+    }
+    
+    void doPlayPause ()
+    {
+      if (iTunesControl == null) return;
+      try
+      {
+        iTunesControl.PlayPause();
+      }
+      catch (COMException)
+      {
+      }
+    }
+    
+    void doStop ()
+    {
+      if (iTunesControl == null) return;
+      try
+      {
+        stopAfterCurrent = false;
+        iTunesControl.Stop();
+      }
+      catch (COMException)
+      {
+      }
+    }
+    
+    void doPreviousTrack ()
+    {
+      if (iTunesControl == null) return;
+      try
+      {
+        stopAfterCurrent = false;
+        iTunesControl.PreviousTrack();
+      }
+      catch (COMException)
+      {
+      }
+    }
+    
+    void doNextTrack ()
+    {
+      if (iTunesControl == null) return;
+      try
+      {
+        stopAfterCurrent = false;
+        iTunesControl.NextTrack();
+      }
+      catch (COMException)
+      {
+      }
+    }
+    
+    void doToggleStopAfterCurrent ()
+    {
+      stopAfterCurrent = !stopAfterCurrent;
+    }
+    
+    void doStartTimer()
+    {
+      if (this.IsDisposed) return;
+      currentHideTime = 0;
+      hideTiming = true;
+    }
+    
+    void doStopTimer()
+    {
+      currentHideTime = 0;
+      hideTiming = false;
+    }
+    
+    void doShowWindow()
+    {
+      if (this.IsDisposed) return;
+      if (!this.Visible)
+      {
+        Win32.ShowWindow(this.Handle, Win32.ShowWindowCommands.ShowNoActivate);
+        this.Visible = true;
+      }
+      else
+      {
+        this.Refresh();
+      }
+      doStartTimer();
+    }
+    void doHideWindow ()
+    {
+      if (this.IsDisposed) return;
+      if (this.Visible)
+      {
+        Win32.AnimateWindow(this.Handle, 1000, Win32.AnimateStyles.Hide | Win32.AnimateStyles.Blend);
+        this.Visible = false;
+      }
+      doStopTimer();
+    }
+    
+    void doPreferences ()
+    {
+      if (this.IsDisposed) return;
+      clearHotkeys();
+      frmPreferences form = new frmPreferences();
+      form.ShowNotificationWindowOnStartup = settings.ShowNotificationWindowOnStartup;
+      form.ShowNotificationWindowOnSongChange = settings.ShowNotificationWindowOnSongChange;
+      form.ShowNotificationWindowOnPlay = settings.ShowNotificationWindowOnPlay;
+      form.ShowNotificationWindowOnStop = settings.ShowNotificationWindowOnStop;
+      form.HideNotificationWindowAfter = settings.HideNotificationWindowAfter;
+      form.Hotkeys = settings.Hotkeys;
+      if (form.ShowDialog() == DialogResult.OK)
+      {
+        // Set results
+        settings.ShowNotificationWindowOnStartup = form.ShowNotificationWindowOnStartup;
+        settings.ShowNotificationWindowOnSongChange = form.ShowNotificationWindowOnSongChange;
+        settings.ShowNotificationWindowOnPlay = form.ShowNotificationWindowOnPlay;
+        settings.ShowNotificationWindowOnStop = form.ShowNotificationWindowOnStop;
+        settings.HideNotificationWindowAfter = form.HideNotificationWindowAfter;
+        settings.Hotkeys = form.Hotkeys;
+        hotkeyAtoms = new int [settings.Hotkeys.Length];
+        // Save results
+        settings.Save();
+      }
+      setHotkeys();
+    }
+    
+    void doAbout ()
+    {
+      if (this.IsDisposed) return;
+      (new frmAbout()).ShowDialog(this);
+    }
+
+    void doExit ()
+    {
+      if (!this.IsDisposed)
+      {
+        clearHotkeys();
+        notifyNotifyIcon.Visible = false;
+        this.Close();
+      }
+      Application.Exit();
+    }
+    
+    #endregion
     
     void ArtworkThread ()
     {
+      if (iTunesControl == null) return;
       IITTrack track = artworkTrack;
       if ((track.Artwork != null) && (track.Artwork.Count >= 1))
       {
@@ -478,21 +597,13 @@ namespace iTuner
           try
           {
             using (Stream stream = File.OpenRead(path))
-            {
-              stream.Seek(0, SeekOrigin.Begin);
-              using (StreamView view = new StreamView(stream, 0, stream.Length))
-              {
-                artwork = Image.FromStream(view);
-              }
-            }
+            { artwork = Image.FromStream(stream); }
           }
           catch (IOException)
           { b = false; }
         }
         try
-        {
-          File.Delete(path);
-        }
+        { File.Delete(path); }
         catch (IOException)
         {}
         Bitmap bitmap = new Bitmap(artwork.Width, artwork.Height, PixelFormat.Format32bppRgb);
@@ -500,70 +611,7 @@ namespace iTuner
         { g.DrawImage(artwork, new Rectangle(new Point(0, 0), bitmap.Size), 0, 0, artwork.Width, artwork.Height, GraphicsUnit.Pixel); }
         currentArtwork = bitmap;
       }
-      render(track);
-    }
-    
-    void setHotkeys ()
-    {
-      clearHotkeys();
-      for (int i = 0; i < hotkeys.Length; i++)
-      {
-        if (hotkeys[i].KeyValue == 0) continue;
-        string atomName = "iTuner.Hotkey." + hotkeys[i].Action.ToString() + ":" + i.ToString();
-        int result = 0;
-        hotkeys[i].Atom = Win32.GlobalAddAtom(atomName);
-        if (hotkeys[i].Atom != 0) result = Win32.RegisterHotKey(this.Handle, hotkeys[i].Atom, hotkeys[i].Modifiers, hotkeys[i].KeyValue);
-        if (result == 0) MessageBox.Show(this, "Could not register hotkey: " + hotkeys[i].Action.ToString(), "iTuner", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
-      }
-    }
-    void clearHotkeys ()
-    {
-      for (int i = 0; i < hotkeys.Length; i++)
-      {
-        if (hotkeys[i].Atom == 0) continue;
-        Win32.UnregisterHotKey(this.Handle, hotkeys[i].Atom);
-        Win32.GlobalDeleteAtom(hotkeys[i].Atom);
-        hotkeys[i].Atom = 0;
-      }
-    }
-    
-    void doShow ()
-    {
-      if (!this.Visible)
-      {
-        Win32.ShowWindow(this.Handle, Win32.ShowWindowCommands.ShowNoActivate);
-        this.Visible = true;
-      }
-      else
-      {
-        this.Refresh();
-      }
-    }
-    void doHide ()
-    {
-      if (this.Visible)
-      {
-        Win32.AnimateWindow(this.Handle, 1000, Win32.AnimateStyles.Hide | Win32.AnimateStyles.Blend);
-        this.Visible = false;
-      }
-    }
-    
-    void doPreferences ()
-    {
-      clearHotkeys();
-      frmPreferences form = new frmPreferences();
-      form.Hotkeys = hotkeys;
-      if (form.ShowDialog() == DialogResult.OK)
-      {
-        // Set results
-        hotkeys = form.Hotkeys;
-      }
-      setHotkeys();
-    }
-    
-    void doAbout ()
-    {
-      (new frmAbout()).ShowDialog(this);
+      renderWindow();
     }
     
     protected override void WndProc (ref Message m)
@@ -574,18 +622,18 @@ namespace iTuner
         {
           int key = ((int)m.LParam) >> 16;
           int mod = ((int)m.LParam) << 16 >> 16;
-          for (int i = 0; i < hotkeys.Length; i++)
+          for (int i = 0; i < settings.Hotkeys.Length; i++)
           {
-            if ((key != hotkeys[i].KeyValue) || (mod != hotkeys[i].Modifiers)) continue;
-            switch (hotkeys[i].Action)
+            if ((key != settings.Hotkeys[i].KeyValue) || (mod != settings.Hotkeys[i].Modifiers)) continue;
+            switch (settings.Hotkeys[i].Action)
             {
-              case HotkeyAction.ShowBrowser: iTunesControl.BrowserWindow.Visible = true; break;
-              case HotkeyAction.Play: iTunesControl.Play(); break;
-              case HotkeyAction.PlayPause: iTunesControl.PlayPause(); break;
-              case HotkeyAction.Stop: iTunesControl.Stop(); break;
+              case HotkeyAction.ShowBrowser: doShowBrowser(); break;
+              case HotkeyAction.Play: doPlay(); break;
+              case HotkeyAction.PlayPause: doPlayPause(); break;
+              case HotkeyAction.Stop: doStop(); break;
               case HotkeyAction.NextSong: doNextTrack(); break;
               case HotkeyAction.PreviousSong: doPreviousTrack(); break;
-              case HotkeyAction.ToggleStopAfterCurrent: stopAfterCurrent = !stopAfterCurrent; break;
+              case HotkeyAction.ToggleStopAfterCurrent: doToggleStopAfterCurrent(); break;
             }
           }
           break;
@@ -598,79 +646,125 @@ namespace iTuner
       }
     }
     
-    void doPreviousTrack ()
+    void setHotkeys ()
     {
-      try
+      clearHotkeys();
+      for (int i = 0; i < settings.Hotkeys.Length; i++)
       {
-        stopAfterCurrent = false;
-        iTunesControl.PreviousTrack();
+        if (settings.Hotkeys[i].KeyValue == 0) continue;
+        string atomName = "iTuner.Hotkey." + settings.Hotkeys[i].Action.ToString() + ":" + i.ToString();
+        int result = 0;
+        hotkeyAtoms[i] = Win32.GlobalAddAtom(atomName);
+        if (hotkeyAtoms[i] != 0) result = Win32.RegisterHotKey(this.Handle, hotkeyAtoms[i], settings.Hotkeys[i].Modifiers, settings.Hotkeys[i].KeyValue);
+        if (result == 0) MessageBox.Show(this, "Could not register hotkey: " + settings.Hotkeys[i].Action.ToString(), "iTuner", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
       }
-      catch (COMException)
+    }
+    void clearHotkeys ()
+    {
+      for (int i = 0; i < hotkeyAtoms.Length; i++)
       {
+        if (hotkeyAtoms[i] == 0) continue;
+        Win32.UnregisterHotKey(this.Handle, hotkeyAtoms[i]);
+        Win32.GlobalDeleteAtom(hotkeyAtoms[i]);
+        hotkeyAtoms[i] = 0;
       }
     }
     
-    void doNextTrack ()
+    void aquireNullArtwork ()
     {
-      try
+      Bitmap bitmap = new Bitmap(this.Width, this.Height, PixelFormat.Format32bppRgb);
+      using (Graphics g = Graphics.FromImage(bitmap))
       {
-        stopAfterCurrent = false;
-        iTunesControl.NextTrack();
+        g.Clear(Color.AliceBlue);
+        g.DrawRectangle(Pens.Black, 0, 0, this.Width-1, this.Height-1);
       }
-      catch (COMException)
+      nullArtwork = bitmap;
+    }
+    void aquireArtwork ()
+    {
+      if (iTunesControl == null) return;
+      IITTrack track = iTunesControl.CurrentTrack;
+      currentArtwork = null;
+      if (track == null) return;
+      // Show artwork (in separate thread)
+      currentArtwork = null;
+      artworkTrack = null;
+      if (artworkThread != null)
       {
+        if (artworkThread.ThreadState == ThreadState.Running)
+          artworkThread.Abort();
+      }
+      if ((track.Artwork != null) && (track.Artwork.Count >= 1))
+      {
+        artworkThread = new Thread(new ThreadStart(ArtworkThread));
+        artworkTrack = track;
+        artworkThread.Start();
+        // Small wait for thread to finish
+        artworkThread.Join(500);
       }
     }
     
-    private void frmMain_Paint (object sender, System.Windows.Forms.PaintEventArgs e)
+    void notify ()
     {
-      e.Graphics.DrawImage(backbuffer, new Rectangle(new Point(0, 0), this.Size), 0, 0, backbuffer.Width, backbuffer.Height, GraphicsUnit.Pixel);
+      if (iTunesControl == null) return;
+      renderTrayText();
+      aquireArtwork();
+      renderWindow();
+      doShowWindow();
     }
     
-    void renderClear ()
+    void renderTrayText ()
     {
-      using (Graphics g = Graphics.FromImage(backbuffer))
-      { render(g); }
-      this.Invalidate();
-    }
-    void render (Graphics g)
-    {
-      g.Clear(Color.AliceBlue);
-      g.DrawRectangle(Pens.Black, 0, 0, this.Width-1, this.Height-1);
+      if (iTunesControl == null) return;
+      IITTrack track = iTunesControl.CurrentTrack;
+      
+      // Show track info
+      string trackText = "";
+      if (track != null)
+      {
+        if (track.Kind == ITTrackKind.ITTrackKindURL)
+        {
+          IITURLTrack urlTrack = (IITURLTrack)track;
+          trackText = String.Format("{0}\n{1}", urlTrack.Name, iTunesControl.CurrentStreamTitle);
+        }
+        else if (track.Kind == ITTrackKind.ITTrackKindCD)
+        {
+          IITFileOrCDTrack fileTrack = (IITFileOrCDTrack)track;
+          trackText = String.Format("{0} {1} - {2}", fileTrack.TrackNumber, fileTrack.Artist, fileTrack.Name);
+        }
+        else
+        {
+          IITFileOrCDTrack fileTrack = (IITFileOrCDTrack)track;
+          trackText = String.Format("{0} - {1}", track.Artist, track.Name);
+        }
+      }
+      else
+      {
+        trackText = "No track";
+      }
+      
+      // Show info
+      string text = String.Format("iTuner\n{0}", trackText);
+      if (text.Length >= 64)
+        text = text.Substring(0, 63-"...".Length) + "...";
+      notifyNotifyIcon.Text = text;
     }
     
-    void renderStopped ()
+    void renderWindow (Graphics g)
     {
-      using (Graphics g = Graphics.FromImage(backbuffer))
-      { renderStopped(g); }
-      this.Invalidate();
-    }
-    void renderStopped (Graphics g)
-    {
+      if (this.IsDisposed) return;
+      if (iTunesControl == null) return;
+      IITTrack track = iTunesControl.CurrentTrack;
+      
+      // Show status
+      /*
       string text = "Playback Stopped";
-      
-      render(g);
-      
       SizeF size = g.MeasureString(text, fontTitle);
       g.DrawString(text, fontTitle, Brushes.Black, (this.Width - size.Width) / 2, 44);
-    }
-    
-    void render (IITTrack track)
-    {
-      using (Graphics g = Graphics.FromImage(backbuffer))
-      { render(track, g); }
-      this.Invalidate();
-    }
-    void render (IITTrack track, Graphics g)
-    {
-      string tracknum = String.Format("{0}/{1}", track.PlayOrderIndex, track.Playlist.Tracks.Count);
-      string playlist = track.Playlist.Name;
-      string title = String.Format("{0} ({1})", track.Name, track.Time);
-      string author = track.Artist;
-      SizeF size;
+      */
       
-      render(g);
-      
+      // Draw background
+      g.DrawImage(nullArtwork, 0, 0, new Rectangle(0, 0, this.Width, this.Height), GraphicsUnit.Pixel);
       if (currentArtwork != null)
       {
         ImageAttributes attr = new ImageAttributes();
@@ -679,13 +773,72 @@ namespace iTuner
         attr.SetColorMatrix(cm, ColorMatrixFlag.Default, ColorAdjustType.Bitmap);
         g.DrawImage(currentArtwork, new Rectangle(0, (this.Height-this.Width+14+8)/2, this.Width, this.Width), 0, 0, currentArtwork.Width, currentArtwork.Height, GraphicsUnit.Pixel, attr);
       }
-      g.DrawString(tracknum, fontStatus, Brushes.Black, 4, 4);
-      size = g.MeasureString(playlist, fontStatus);
-      g.DrawString(playlist, fontStatus, Brushes.Black, this.Width - size.Width, 4);
-      size = g.MeasureString(title, fontTitle);
-      g.DrawString(title, fontTitle, Brushes.Black, (this.Width - size.Width) / 2, 34);
-      size = g.MeasureString(author, fontAuthor);
-      g.DrawString(author, fontAuthor, Brushes.Black, (this.Width - size.Width) / 2, 54);
+      
+      // Draw track info
+      if (track != null)
+      {
+        if (track.Kind == ITTrackKind.ITTrackKindURL)
+        {
+          IITURLTrack urlTrack = (IITURLTrack)track;
+          bool isRadio = track.Playlist.Kind == ITPlaylistKind.ITPlaylistKindRadioTuner;
+          // FUTURE: Show category, if available
+          //string playlist = ( isRadio )?( String.Format("Radio ({0})", urlTrack.Category) ):( "URL" );
+          string playlist = ( isRadio )?( "Radio" ):( "URL" );
+          string title = iTunesControl.CurrentStreamTitle;
+          string name = track.Name;
+          if (title == "") title = "Untitled Track";
+          g.DrawString(playlist, fontPlaylist, Brushes.Black, 4, 4);
+          g.DrawString(title, fontTitle, Brushes.Black, (this.Width - g.MeasureString(title, fontTitle).Width) / 2, 34);
+          g.DrawString(name, fontAuthor, Brushes.Black, (this.Width - g.MeasureString(name, fontAuthor).Width) / 2, 54);
+        }
+        else if (track.Kind == ITTrackKind.ITTrackKindCD)
+        {
+          string playlist = String.Format("CD {0}/{1}", track.TrackNumber, track.TrackCount);
+          string title = String.Format("{0} ({1})", track.Name, track.Time);
+          string author = track.Artist;
+          string album = track.Album;
+          g.DrawString(playlist, fontPlaylist, Brushes.Black, 4, 4);
+          g.DrawString(title, fontTitle, Brushes.Black, (this.Width - g.MeasureString(title, fontTitle).Width) / 2, 28);
+          g.DrawString(author, fontAuthor, Brushes.Black, (this.Width - g.MeasureString(author, fontAuthor).Width) / 2, 48);
+          g.DrawString(album, fontAlbum, Brushes.Black, (this.Width - g.MeasureString(album, fontAlbum).Width) / 2, 68);
+        }
+        else
+        {
+          string playlist = String.Format("{0}/{1} ({2})", track.PlayOrderIndex, track.Playlist.Tracks.Count, track.Playlist.Name);
+          string title = String.Format("{0} ({1})", track.Name, track.Time);
+          string author = track.Artist;
+          string album = track.Album;
+          g.DrawString(playlist, fontPlaylist, Brushes.Black, 4, 4);
+          g.DrawString(title, fontTitle, Brushes.Black, (this.Width - g.MeasureString(title, fontTitle).Width) / 2, 28);
+          g.DrawString(author, fontAuthor, Brushes.Black, (this.Width - g.MeasureString(author, fontAuthor).Width) / 2, 48);
+          g.DrawString(album, fontAlbum, Brushes.Black, (this.Width - g.MeasureString(album, fontAlbum).Width) / 2, 68);
+        }
+      }
+      else
+      {
+        string text = "No Track";
+        SizeF size = g.MeasureString(text, fontTitle);
+        g.DrawString(text, fontTitle, Brushes.Black, (this.Width - size.Width) / 2, 48);
+      }
+      
+      // Draw status
+      string status = "";
+      if (iTunesControl.PlayerState == ITPlayerState.ITPlayerStatePlaying)
+        status = "Playing";
+      else if (iTunesControl.PlayerState == ITPlayerState.ITPlayerStateStopped)
+        status = "Stopped";
+      else if (iTunesControl.PlayerState == ITPlayerState.ITPlayerStateFastForward)
+        status = "Fast Forward";
+      else if (iTunesControl.PlayerState == ITPlayerState.ITPlayerStateRewind)
+        status = "Rewind";
+      g.DrawString(status, fontStatus, Brushes.Black, this.Width - g.MeasureString(status, fontStatus).Width, 4);
+    }
+    void renderWindow ()
+    {
+      if (this.IsDisposed) return;
+      using (Graphics g = Graphics.FromImage(backbuffer))
+      { renderWindow(g); }
+      this.Invalidate();
     }
   }
 }

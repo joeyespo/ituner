@@ -136,7 +136,7 @@
                     BuildAction = "Compile"
                 />
                 <File
-                    RelPath = "StreamView.cs"
+                    RelPath = "Settings.cs"
                     SubType = "Code"
                     BuildAction = "Compile"
                 />

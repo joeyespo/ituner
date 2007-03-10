@@ -24,6 +24,14 @@ namespace iTuner
     private System.Windows.Forms.Button btnSet;
     private System.Windows.Forms.Button btnDelete;
     private System.Windows.Forms.ComboBox comboHotkeyActions;
+    private System.Windows.Forms.Label lblNotifications;
+    private System.Windows.Forms.CheckBox chkShowNotificationOnStartup;
+    private System.Windows.Forms.CheckBox chkShowNotificationOnPlay;
+    private System.Windows.Forms.CheckBox chkShowNotificationOnStop;
+    private System.Windows.Forms.CheckBox chkShowNotificationOnSongChange;
+    private System.Windows.Forms.TextBox txtNotificationHideAfter;
+    private System.Windows.Forms.Label lblNotificationHideAfter;
+    private System.Windows.Forms.Label lblNotificationHideAfterSeconds;
 		/// <summary>
 		/// Required designer variable.
 		/// </summary>
@@ -72,13 +80,21 @@ namespace iTuner
       this.btnAdd = new System.Windows.Forms.Button();
       this.btnSet = new System.Windows.Forms.Button();
       this.btnDelete = new System.Windows.Forms.Button();
+      this.lblNotifications = new System.Windows.Forms.Label();
+      this.chkShowNotificationOnStartup = new System.Windows.Forms.CheckBox();
+      this.chkShowNotificationOnPlay = new System.Windows.Forms.CheckBox();
+      this.chkShowNotificationOnStop = new System.Windows.Forms.CheckBox();
+      this.chkShowNotificationOnSongChange = new System.Windows.Forms.CheckBox();
+      this.txtNotificationHideAfter = new System.Windows.Forms.TextBox();
+      this.lblNotificationHideAfter = new System.Windows.Forms.Label();
+      this.lblNotificationHideAfterSeconds = new System.Windows.Forms.Label();
       this.SuspendLayout();
       // 
       // btnOK
       // 
       this.btnOK.Anchor = (System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left);
       this.btnOK.DialogResult = System.Windows.Forms.DialogResult.OK;
-      this.btnOK.Location = new System.Drawing.Point(8, 274);
+      this.btnOK.Location = new System.Drawing.Point(8, 404);
       this.btnOK.Name = "btnOK";
       this.btnOK.Size = new System.Drawing.Size(120, 40);
       this.btnOK.TabIndex = 0;
@@ -89,9 +105,9 @@ namespace iTuner
       this.listHotkeys.Anchor = ((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
         | System.Windows.Forms.AnchorStyles.Right);
       this.listHotkeys.IntegralHeight = false;
-      this.listHotkeys.Location = new System.Drawing.Point(8, 24);
+      this.listHotkeys.Location = new System.Drawing.Point(8, 152);
       this.listHotkeys.Name = "listHotkeys";
-      this.listHotkeys.Size = new System.Drawing.Size(412, 196);
+      this.listHotkeys.Size = new System.Drawing.Size(396, 196);
       this.listHotkeys.TabIndex = 1;
       this.listHotkeys.SelectedIndexChanged += new System.EventHandler(this.listHotkeys_SelectedIndexChanged);
       // 
@@ -99,9 +115,9 @@ namespace iTuner
       // 
       this.lblHotkeys.Anchor = ((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
         | System.Windows.Forms.AnchorStyles.Right);
-      this.lblHotkeys.Location = new System.Drawing.Point(8, 8);
+      this.lblHotkeys.Location = new System.Drawing.Point(8, 136);
       this.lblHotkeys.Name = "lblHotkeys";
-      this.lblHotkeys.Size = new System.Drawing.Size(412, 16);
+      this.lblHotkeys.Size = new System.Drawing.Size(396, 16);
       this.lblHotkeys.TabIndex = 2;
       this.lblHotkeys.Text = "Hotkeys:";
       // 
@@ -110,10 +126,10 @@ namespace iTuner
       this.txtHotkey.Anchor = ((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
         | System.Windows.Forms.AnchorStyles.Right);
       this.txtHotkey.BackColor = System.Drawing.SystemColors.Window;
-      this.txtHotkey.Location = new System.Drawing.Point(8, 248);
+      this.txtHotkey.Location = new System.Drawing.Point(8, 376);
       this.txtHotkey.Name = "txtHotkey";
       this.txtHotkey.ReadOnly = true;
-      this.txtHotkey.Size = new System.Drawing.Size(272, 20);
+      this.txtHotkey.Size = new System.Drawing.Size(256, 20);
       this.txtHotkey.TabIndex = 3;
       this.txtHotkey.Text = "";
       this.txtHotkey.KeyDown += new System.Windows.Forms.KeyEventHandler(this.txtHotkey_KeyDown);
@@ -132,15 +148,15 @@ namespace iTuner
                                                             "Playback: Next Song",
                                                             "Playback: Previous Song",
                                                             "Playback: Toggle Stop After Current"});
-      this.comboHotkeyActions.Location = new System.Drawing.Point(8, 224);
+      this.comboHotkeyActions.Location = new System.Drawing.Point(8, 352);
       this.comboHotkeyActions.Name = "comboHotkeyActions";
-      this.comboHotkeyActions.Size = new System.Drawing.Size(412, 21);
+      this.comboHotkeyActions.Size = new System.Drawing.Size(396, 21);
       this.comboHotkeyActions.TabIndex = 4;
       // 
       // btnAdd
       // 
       this.btnAdd.Anchor = (System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right);
-      this.btnAdd.Location = new System.Drawing.Point(284, 248);
+      this.btnAdd.Location = new System.Drawing.Point(268, 376);
       this.btnAdd.Name = "btnAdd";
       this.btnAdd.Size = new System.Drawing.Size(40, 20);
       this.btnAdd.TabIndex = 5;
@@ -151,7 +167,7 @@ namespace iTuner
       // 
       this.btnSet.Anchor = (System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right);
       this.btnSet.Enabled = false;
-      this.btnSet.Location = new System.Drawing.Point(328, 248);
+      this.btnSet.Location = new System.Drawing.Point(312, 376);
       this.btnSet.Name = "btnSet";
       this.btnSet.Size = new System.Drawing.Size(40, 20);
       this.btnSet.TabIndex = 5;
@@ -162,19 +178,101 @@ namespace iTuner
       // 
       this.btnDelete.Anchor = (System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right);
       this.btnDelete.Enabled = false;
-      this.btnDelete.Location = new System.Drawing.Point(372, 248);
+      this.btnDelete.Location = new System.Drawing.Point(356, 376);
       this.btnDelete.Name = "btnDelete";
       this.btnDelete.Size = new System.Drawing.Size(48, 20);
       this.btnDelete.TabIndex = 5;
       this.btnDelete.Text = "&Delete";
       this.btnDelete.Click += new System.EventHandler(this.btnDelete_Click);
       // 
+      // lblNotifications
+      // 
+      this.lblNotifications.Anchor = ((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+        | System.Windows.Forms.AnchorStyles.Right);
+      this.lblNotifications.Location = new System.Drawing.Point(8, 8);
+      this.lblNotifications.Name = "lblNotifications";
+      this.lblNotifications.Size = new System.Drawing.Size(396, 16);
+      this.lblNotifications.TabIndex = 6;
+      this.lblNotifications.Text = "Show Notification Window:";
+      // 
+      // chkShowNotificationOnStartup
+      // 
+      this.chkShowNotificationOnStartup.Anchor = ((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+        | System.Windows.Forms.AnchorStyles.Right);
+      this.chkShowNotificationOnStartup.Location = new System.Drawing.Point(8, 28);
+      this.chkShowNotificationOnStartup.Name = "chkShowNotificationOnStartup";
+      this.chkShowNotificationOnStartup.Size = new System.Drawing.Size(396, 16);
+      this.chkShowNotificationOnStartup.TabIndex = 7;
+      this.chkShowNotificationOnStartup.Text = "On Startup";
+      // 
+      // chkShowNotificationOnPlay
+      // 
+      this.chkShowNotificationOnPlay.Anchor = ((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+        | System.Windows.Forms.AnchorStyles.Right);
+      this.chkShowNotificationOnPlay.Location = new System.Drawing.Point(8, 68);
+      this.chkShowNotificationOnPlay.Name = "chkShowNotificationOnPlay";
+      this.chkShowNotificationOnPlay.Size = new System.Drawing.Size(396, 16);
+      this.chkShowNotificationOnPlay.TabIndex = 7;
+      this.chkShowNotificationOnPlay.Text = "On Play";
+      // 
+      // chkShowNotificationOnStop
+      // 
+      this.chkShowNotificationOnStop.Anchor = ((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+        | System.Windows.Forms.AnchorStyles.Right);
+      this.chkShowNotificationOnStop.Location = new System.Drawing.Point(8, 88);
+      this.chkShowNotificationOnStop.Name = "chkShowNotificationOnStop";
+      this.chkShowNotificationOnStop.Size = new System.Drawing.Size(396, 16);
+      this.chkShowNotificationOnStop.TabIndex = 7;
+      this.chkShowNotificationOnStop.Text = "On Stop";
+      // 
+      // chkShowNotificationOnSongChange
+      // 
+      this.chkShowNotificationOnSongChange.Anchor = ((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+        | System.Windows.Forms.AnchorStyles.Right);
+      this.chkShowNotificationOnSongChange.Location = new System.Drawing.Point(8, 48);
+      this.chkShowNotificationOnSongChange.Name = "chkShowNotificationOnSongChange";
+      this.chkShowNotificationOnSongChange.Size = new System.Drawing.Size(396, 16);
+      this.chkShowNotificationOnSongChange.TabIndex = 7;
+      this.chkShowNotificationOnSongChange.Text = "On Song Change";
+      // 
+      // txtNotificationHideAfter
+      // 
+      this.txtNotificationHideAfter.Location = new System.Drawing.Point(132, 108);
+      this.txtNotificationHideAfter.Name = "txtNotificationHideAfter";
+      this.txtNotificationHideAfter.Size = new System.Drawing.Size(60, 20);
+      this.txtNotificationHideAfter.TabIndex = 8;
+      this.txtNotificationHideAfter.Text = "10";
+      this.txtNotificationHideAfter.Leave += new System.EventHandler(this.txtNotificationHideAfter_Leave);
+      // 
+      // lblNotificationHideAfter
+      // 
+      this.lblNotificationHideAfter.Location = new System.Drawing.Point(8, 112);
+      this.lblNotificationHideAfter.Name = "lblNotificationHideAfter";
+      this.lblNotificationHideAfter.Size = new System.Drawing.Size(120, 16);
+      this.lblNotificationHideAfter.TabIndex = 9;
+      this.lblNotificationHideAfter.Text = "Hide Notification After:";
+      // 
+      // lblNotificationHideAfterSeconds
+      // 
+      this.lblNotificationHideAfterSeconds.Anchor = ((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+        | System.Windows.Forms.AnchorStyles.Right);
+      this.lblNotificationHideAfterSeconds.Location = new System.Drawing.Point(196, 112);
+      this.lblNotificationHideAfterSeconds.Name = "lblNotificationHideAfterSeconds";
+      this.lblNotificationHideAfterSeconds.Size = new System.Drawing.Size(208, 16);
+      this.lblNotificationHideAfterSeconds.TabIndex = 10;
+      this.lblNotificationHideAfterSeconds.Text = "seconds";
+      // 
       // frmPreferences
       // 
       this.AcceptButton = this.btnOK;
       this.AutoScaleBaseSize = new System.Drawing.Size(5, 13);
-      this.ClientSize = new System.Drawing.Size(426, 320);
+      this.ClientSize = new System.Drawing.Size(410, 448);
       this.Controls.AddRange(new System.Windows.Forms.Control[] {
+                                                                  this.lblNotificationHideAfterSeconds,
+                                                                  this.lblNotificationHideAfter,
+                                                                  this.txtNotificationHideAfter,
+                                                                  this.chkShowNotificationOnStartup,
+                                                                  this.lblNotifications,
                                                                   this.btnAdd,
                                                                   this.comboHotkeyActions,
                                                                   this.txtHotkey,
@@ -182,7 +280,10 @@ namespace iTuner
                                                                   this.listHotkeys,
                                                                   this.btnOK,
                                                                   this.btnSet,
-                                                                  this.btnDelete});
+                                                                  this.btnDelete,
+                                                                  this.chkShowNotificationOnPlay,
+                                                                  this.chkShowNotificationOnStop,
+                                                                  this.chkShowNotificationOnSongChange});
       this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
       this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
       this.Name = "frmPreferences";
@@ -195,6 +296,39 @@ namespace iTuner
 		#endregion
     
     #endregion
+    
+    public bool ShowNotificationWindowOnStartup
+    {
+      get { return chkShowNotificationOnStartup.Checked; }
+      set { chkShowNotificationOnStartup.Checked = value; }
+    }
+    public bool ShowNotificationWindowOnSongChange
+    {
+      get { return chkShowNotificationOnSongChange.Checked; }
+      set { chkShowNotificationOnSongChange.Checked = value; }
+    }
+    public bool ShowNotificationWindowOnPlay
+    {
+      get { return chkShowNotificationOnPlay.Checked; }
+      set { chkShowNotificationOnPlay.Checked = value; }
+    }
+    public bool ShowNotificationWindowOnStop
+    {
+      get { return chkShowNotificationOnStop.Checked; }
+      set { chkShowNotificationOnStop.Checked = value; }
+    }
+    
+    public int HideNotificationWindowAfter
+    {
+      get
+      {
+        try
+        { return int.Parse(txtNotificationHideAfter.Text); }
+        catch (FormatException)
+        { return 10; }
+      }
+      set { txtNotificationHideAfter.Text = value.ToString(); }
+    }
     
     public HotkeyItem [] Hotkeys
     {
@@ -211,6 +345,14 @@ namespace iTuner
         foreach (HotkeyItem item in value)
           listHotkeys.Items.Add(item);
       }
+    }
+    
+    private void txtNotificationHideAfter_Leave(object sender, System.EventArgs e)
+    {
+      try
+      { txtNotificationHideAfter.Text = int.Parse(txtNotificationHideAfter.Text).ToString(); }
+      catch (FormatException)
+      { txtNotificationHideAfter.Text = "10"; }
     }
     
     private void txtHotkey_KeyDown (object sender, System.Windows.Forms.KeyEventArgs e)
