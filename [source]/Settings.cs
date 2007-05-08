@@ -24,16 +24,13 @@ namespace iTuner
     // Hotkeys
     public HotkeyItem [] Hotkeys = new HotkeyItem [0];
     
+    // Radio Log
+    public bool LogRadioTracks;
+    public bool LogRadioMarkOwnedTracks;
+    public string RadioLogFile;
+    
     public iTunerSettings ()
     {
-      // Properties
-      foreach (FieldInfo field in GetType().GetFields())
-      {
-        if ((!field.IsPublic) || (field.IsSpecialName)) continue;
-        object [] attr = field.GetCustomAttributes(typeof(DefaultValueAttribute), true);
-        if (attr.Length == 0) continue;
-        field.SetValue(this, ((DefaultValueAttribute)attr[0]).Value);
-      }
       // Notifications
       ShowNotificationWindowOnStartup = true;
       ShowNotificationWindowOnSongChange = true;
@@ -49,8 +46,14 @@ namespace iTuner
       Hotkeys[3] = new HotkeyItem(HotkeyAction.NextSong, (int)Keys.MediaNextTrack);
       Hotkeys[4] = new HotkeyItem(HotkeyAction.PreviousSong, (int)Keys.MediaPreviousTrack);
       Hotkeys[5] = new HotkeyItem(HotkeyAction.ToggleStopAfterCurrent, (int)Keys.MediaStop, Win32.MOD_CONTROL);
+      
+      // Radio Log
+      LogRadioTracks = true;
+      LogRadioMarkOwnedTracks = true;
+      RadioLogFile = "Radiolog.txt";
     }
     
+    #region Save/Load Settings
     
     public void Save ()
     { Save(Path.GetDirectoryName(Application.ExecutablePath) + "\\iTuner.ini"); }
@@ -86,5 +89,8 @@ namespace iTuner
       { settings = new iTunerSettings(); settings.Save(); }
       return settings;
     }
+    
+    #endregion
+    
   }
 }

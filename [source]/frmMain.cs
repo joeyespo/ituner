@@ -444,7 +444,7 @@ namespace iTuner
       }
     }
     
-    void doStop ()
+    void doStop()
     {
       if (iTunesControl == null) return;
       try
@@ -457,7 +457,7 @@ namespace iTuner
       }
     }
     
-    void doPreviousTrack ()
+    void doPreviousTrack()
     {
       if (iTunesControl == null) return;
       try
@@ -470,7 +470,7 @@ namespace iTuner
       }
     }
     
-    void doNextTrack ()
+    void doNextTrack()
     {
       if (iTunesControl == null) return;
       try
@@ -483,7 +483,7 @@ namespace iTuner
       }
     }
     
-    void doToggleStopAfterCurrent ()
+    void doToggleStopAfterCurrent()
     {
       stopAfterCurrent = !stopAfterCurrent;
     }
@@ -515,7 +515,7 @@ namespace iTuner
       }
       doStartTimer();
     }
-    void doHideWindow ()
+    void doHideWindow()
     {
       if (this.IsDisposed) return;
       if (this.Visible)
@@ -526,7 +526,7 @@ namespace iTuner
       doStopTimer();
     }
     
-    void doPreferences ()
+    void doPreferences()
     {
       if (this.IsDisposed) return;
       clearHotkeys();
@@ -537,6 +537,9 @@ namespace iTuner
       form.ShowNotificationWindowOnStop = settings.ShowNotificationWindowOnStop;
       form.HideNotificationWindowAfter = settings.HideNotificationWindowAfter;
       form.Hotkeys = settings.Hotkeys;
+      form.LogRadioTracks = settings.LogRadioTracks;
+      form.LogRadioMarkOwnedTracks = settings.LogRadioMarkOwnedTracks;
+      form.RadioLogFile = settings.RadioLogFile;
       if (form.ShowDialog() == DialogResult.OK)
       {
         // Set results
@@ -546,6 +549,9 @@ namespace iTuner
         settings.ShowNotificationWindowOnStop = form.ShowNotificationWindowOnStop;
         settings.HideNotificationWindowAfter = form.HideNotificationWindowAfter;
         settings.Hotkeys = form.Hotkeys;
+        settings.LogRadioTracks = form.LogRadioTracks;
+        settings.LogRadioMarkOwnedTracks = form.LogRadioMarkOwnedTracks;
+        settings.RadioLogFile = form.RadioLogFile;
         hotkeyAtoms = new int [settings.Hotkeys.Length];
         // Save results
         settings.Save();
@@ -553,13 +559,13 @@ namespace iTuner
       setHotkeys();
     }
     
-    void doAbout ()
+    void doAbout()
     {
       if (this.IsDisposed) return;
       (new frmAbout()).ShowDialog(this);
     }
 
-    void doExit ()
+    void doExit()
     {
       if (!this.IsDisposed)
       {
@@ -572,7 +578,7 @@ namespace iTuner
     
     #endregion
     
-    void ArtworkThread ()
+    void ArtworkThread()
     {
       if (iTunesControl == null) return;
       IITTrack track = artworkTrack;
@@ -614,7 +620,7 @@ namespace iTuner
       renderWindow();
     }
     
-    protected override void WndProc (ref Message m)
+    protected override void WndProc(ref Message m)
     {
       switch (m.Msg)
       {
@@ -646,7 +652,7 @@ namespace iTuner
       }
     }
     
-    void setHotkeys ()
+    void setHotkeys()
     {
       clearHotkeys();
       for (int i = 0; i < settings.Hotkeys.Length; i++)
@@ -659,7 +665,7 @@ namespace iTuner
         if (result == 0) MessageBox.Show(this, "Could not register hotkey: " + settings.Hotkeys[i].Action.ToString(), "iTuner", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
       }
     }
-    void clearHotkeys ()
+    void clearHotkeys()
     {
       for (int i = 0; i < hotkeyAtoms.Length; i++)
       {
@@ -670,7 +676,7 @@ namespace iTuner
       }
     }
     
-    void aquireNullArtwork ()
+    void aquireNullArtwork()
     {
       Bitmap bitmap = new Bitmap(this.Width, this.Height, PixelFormat.Format32bppRgb);
       using (Graphics g = Graphics.FromImage(bitmap))
@@ -680,7 +686,7 @@ namespace iTuner
       }
       nullArtwork = bitmap;
     }
-    void aquireArtwork ()
+    void aquireArtwork()
     {
       if (iTunesControl == null) return;
       IITTrack track = iTunesControl.CurrentTrack;
@@ -704,16 +710,95 @@ namespace iTuner
       }
     }
     
-    void notify ()
+    void notify()
     {
       if (iTunesControl == null) return;
+      logRadioTrack();
       renderTrayText();
       aquireArtwork();
       renderWindow();
       doShowWindow();
     }
     
-    void renderTrayText ()
+    void logRadioTrack()
+    {
+      if (iTunesControl == null) return;
+      IITTrack track = iTunesControl.CurrentTrack;
+      
+      // Check for logging conditions
+      if (!settings.LogRadioTracks) return;
+      if (iTunesControl.PlayerState != ITPlayerState.ITPlayerStatePlaying) return;
+      if (track == null) return;
+      if (track.Kind != ITTrackKind.ITTrackKindURL) return;
+      IITURLTrack urlTrack = (IITURLTrack)track;
+      if (track.Playlist.Kind != ITPlaylistKind.ITPlaylistKindRadioTuner) return;
+      
+      // FUTURE: Show category, if available
+      //string playlist = ( isRadio )?( String.Format("Radio ({0})", urlTrack.Category) ):( "URL" );
+      string title = iTunesControl.CurrentStreamTitle;
+      
+      // Untitled tracks are not logged
+      if ((title == null) || (title == "")) return;
+      
+      // Parse title
+      int sepIndex = title.IndexOf("-");
+      if (sepIndex == -1) sepIndex = title.Length;
+      string trackArtist = title.Substring(0, sepIndex).Trim();
+      string trackName = title.Substring(sepIndex + 1).Trim();
+      
+      // Check for ownership
+      bool ownsTrack = false;
+      IITLibraryPlaylist library = iTunesControl.LibraryPlaylist;
+      if (library != null)
+      {
+        IITTrackCollection matches = library.Search(trackArtist, ITPlaylistSearchField.ITPlaylistSearchFieldArtists);
+        if ((matches != null) && (matches.Count > 0))
+        {
+          for (int i = 1; i <= matches.Count; i++)
+          {
+            IITTrack match = matches[i];
+            if (match == null) continue;
+            if ((match.Artist == trackArtist) && (match.Name == trackName))
+              ownsTrack = true;
+          }
+        }
+      }
+      
+      string logText = String.Format("{0}{1}", ((ownsTrack) ? ("* ") : ("")), title);
+      
+      // Check for duplicate entry
+      if (File.Exists(settings.RadioLogFile))
+      {
+        try
+        {
+          StreamReader sr = new StreamReader(File.OpenRead(settings.RadioLogFile));
+          string line = "";
+          while (sr.Peek() != -1) line = sr.ReadLine();
+          if (line != null)
+          {
+            line = line.Trim();
+            if (line == logText) return;
+          }
+          sr.Close();
+        }
+        catch (IOException)
+        {}
+      }
+      
+      // Log track information
+      try
+      {
+        StreamWriter file = File.AppendText(settings.RadioLogFile);
+        file.WriteLine(logText);
+        file.Close();
+      }
+      catch (IOException ex)
+      {
+        MessageBox.Show(String.Format("Could not log radio track.\n\nTrack:\n{0}\n\nError Message:\n{1}", logText, ex.Message), "iTuner", MessageBoxButtons.OK, MessageBoxIcon.Information);
+      }
+    }
+    
+    void renderTrayText()
     {
       if (iTunesControl == null) return;
       IITTrack track = iTunesControl.CurrentTrack;
@@ -750,7 +835,7 @@ namespace iTuner
       notifyNotifyIcon.Text = text;
     }
     
-    void renderWindow (Graphics g)
+    void renderWindow(Graphics g)
     {
       if (this.IsDisposed) return;
       if (iTunesControl == null) return;
