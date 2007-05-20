@@ -10,6 +10,8 @@ iTuner ToDo
 * Topmost notification window
 * Preference: Show Notification window on: startup, song change, play, stop
 * Preference: Notification Window autohide time
+* Put song name first in tray icon tool tip
+* "Stop after current song" functionality for radio and streams
 - Rename 'song' to 'track' project-wide
 - Custom background image for tracks with no album art
 - Do not show current stream title in URLs when stopped

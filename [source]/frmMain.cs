@@ -350,8 +350,9 @@ namespace iTuner
     private void iTunesControl_OnTrackChangedEvent (object iTrack)
     {
       if (iTunesControl == null) return;
-      if (settings.ShowNotificationWindowOnSongChange)
-        notify();
+      IITTrack track = (IITTrack)iTrack;
+      // Calls this event when a track changes within a stream
+      trackChanged(track);
     }
     private void iTunesControl_OnStopEvent (object iTrack)
     {
@@ -359,13 +360,8 @@ namespace iTuner
       IITTrack track = (IITTrack)iTrack;
       if (iTunesControl.PlayerState == ITPlayerState.ITPlayerStatePlaying)
       {
-        if (stopAfterCurrent)
-        {
-          iTunesControl.Stop();
-          iTunesControl.BackTrack();
-          stopAfterCurrent = false;
-          return;
-        }
+        // Will reach here when actual tract changes (stops then plays tracks if nonstream)
+        trackChanged(track);
         return;
       }
       if (iTunesControl.PlayerPosition != 0) return;
@@ -710,6 +706,19 @@ namespace iTuner
       }
     }
     
+    void trackChanged(IITTrack track)
+    {
+      if (stopAfterCurrent)
+      {
+        stopAfterCurrent = false;
+        iTunesControl.Stop();
+        if (track.Kind != ITTrackKind.ITTrackKindURL) iTunesControl.BackTrack();
+        return;
+      }
+      if (settings.ShowNotificationWindowOnSongChange)
+        notify();
+    }
+
     void notify()
     {
       if (iTunesControl == null) return;
@@ -731,10 +740,9 @@ namespace iTuner
       if (track == null) return;
       if (track.Kind != ITTrackKind.ITTrackKindURL) return;
       IITURLTrack urlTrack = (IITURLTrack)track;
-      if (track.Playlist.Kind != ITPlaylistKind.ITPlaylistKindRadioTuner) return;
+      if (track.Kind != ITTrackKind.ITTrackKindURL) return;
       
       // FUTURE: Show category, if available
-      //string playlist = ( isRadio )?( String.Format("Radio ({0})", urlTrack.Category) ):( "URL" );
       string title = iTunesControl.CurrentStreamTitle;
       
       // Untitled tracks are not logged
@@ -810,7 +818,7 @@ namespace iTuner
         if (track.Kind == ITTrackKind.ITTrackKindURL)
         {
           IITURLTrack urlTrack = (IITURLTrack)track;
-          trackText = String.Format("{0}\n{1}", urlTrack.Name, iTunesControl.CurrentStreamTitle);
+          trackText = String.Format("{0}\n{1}", iTunesControl.CurrentStreamTitle, urlTrack.Name);
         }
         else if (track.Kind == ITTrackKind.ITTrackKindCD)
         {
