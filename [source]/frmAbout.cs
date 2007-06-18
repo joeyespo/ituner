@@ -222,10 +222,10 @@ public class frmAbout : System.Windows.Forms.Form
                                                                 this.lblTitle,
                                                                 this.btnClose});
     this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
+    this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
     this.MaximizeBox = false;
     this.MinimizeBox = false;
     this.Name = "frmAbout";
-    this.ShowInTaskbar = false;
     this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
     this.Text = "About";
     this.Load += new System.EventHandler(this.frmAbout_Load);

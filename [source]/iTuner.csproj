@@ -101,6 +101,16 @@
                     BuildAction = "Compile"
                 />
                 <File
+                    RelPath = "formShowRadioLog.cs"
+                    SubType = "Form"
+                    BuildAction = "Compile"
+                />
+                <File
+                    RelPath = "formShowRadioLog.resx"
+                    DependentUpon = "formShowRadioLog.cs"
+                    BuildAction = "EmbeddedResource"
+                />
+                <File
                     RelPath = "frmAbout.cs"
                     SubType = "Form"
                     BuildAction = "Compile"

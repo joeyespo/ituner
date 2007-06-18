@@ -498,24 +498,34 @@ namespace iTuner
     
     private void buttonRadioLogShow_Click(object sender, System.EventArgs e)
     {
-      try
-      {
-        Process.Start(RadioLogFile, "");
-      }
-      catch (Exception)
-      {}
+      formShowRadioLog form = new formShowRadioLog();
+      form.LoadRadioLog(RadioLogFile);
+      form.ShowDialog(this);
     }
     private void buttonRadioLogClear_Click(object sender, System.EventArgs e)
     {
       if (MessageBox.Show(this, "Clear radio log file?", "iTuner", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
       if (File.Exists(RadioLogFile))
       {
+        FileStream file = null;
         try
         {
-          File.Create(RadioLogFile).Close();
+          file = File.Create(RadioLogFile);
         }
-        catch (IOException)
-        {}
+        catch (IOException ex)
+        {
+          MessageBox.Show(String.Format("Could not clear radio log.\n\nError Message:\n{0}", ex.Message), "iTuner", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        finally
+        {
+          try
+          {
+            if (file != null)
+              file.Close();
+          }
+          catch
+          {}
+        }
       }
     }
     

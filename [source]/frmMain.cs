@@ -16,6 +16,8 @@ namespace iTuner
     {}
     
     public readonly Size DefaultNotifySize = new Size(324, 98);
+    
+    bool inDialog = false;
     int currentHideTime = 0;
     bool hideTiming = false;
     iTunerSettings settings = new iTunerSettings();
@@ -52,6 +54,7 @@ namespace iTuner
     private System.Windows.Forms.MenuItem menuTrayMenuStopAfterCurrent;
     private System.Windows.Forms.MenuItem menuTrayMenuSep04;
     private System.Windows.Forms.Timer timerClose;
+    private System.Windows.Forms.MenuItem menuTrayMenuShowRadioLog;
     private System.Windows.Forms.MenuItem menuTrayMenuAbout;
     
     #endregion
@@ -148,6 +151,7 @@ namespace iTuner
       this.menuTrayMenuSep04 = new System.Windows.Forms.MenuItem();
       this.menuTrayMenuExit = new System.Windows.Forms.MenuItem();
       this.timerClose = new System.Windows.Forms.Timer(this.components);
+      this.menuTrayMenuShowRadioLog = new System.Windows.Forms.MenuItem();
       // 
       // notifyNotifyIcon
       // 
@@ -171,6 +175,7 @@ namespace iTuner
                                                                                  this.menuTrayMenuStopAfterCurrent,
                                                                                  this.menuTrayMenuSep03,
                                                                                  this.menuTrayMenuPreferences,
+                                                                                 this.menuTrayMenuShowRadioLog,
                                                                                  this.menuTrayMenuAbout,
                                                                                  this.menuTrayMenuSep04,
                                                                                  this.menuTrayMenuExit});
@@ -242,18 +247,18 @@ namespace iTuner
       // 
       // menuTrayMenuAbout
       // 
-      this.menuTrayMenuAbout.Index = 11;
+      this.menuTrayMenuAbout.Index = 12;
       this.menuTrayMenuAbout.Text = "&About...";
       this.menuTrayMenuAbout.Click += new System.EventHandler(this.menuTrayMenuAbout_Click);
       // 
       // menuTrayMenuSep04
       // 
-      this.menuTrayMenuSep04.Index = 12;
+      this.menuTrayMenuSep04.Index = 13;
       this.menuTrayMenuSep04.Text = "-";
       // 
       // menuTrayMenuExit
       // 
-      this.menuTrayMenuExit.Index = 13;
+      this.menuTrayMenuExit.Index = 14;
       this.menuTrayMenuExit.Text = "E&xit";
       this.menuTrayMenuExit.Click += new System.EventHandler(this.menuTrayMenuExit_Click);
       // 
@@ -261,6 +266,12 @@ namespace iTuner
       // 
       this.timerClose.Enabled = true;
       this.timerClose.Tick += new System.EventHandler(this.timerClose_Tick);
+      // 
+      // menuTrayMenuShowRadioLog
+      // 
+      this.menuTrayMenuShowRadioLog.Index = 11;
+      this.menuTrayMenuShowRadioLog.Text = "Show Radio Log...";
+      this.menuTrayMenuShowRadioLog.Click += new System.EventHandler(this.menuTrayMenuShowRadioLog_Click);
       // 
       // frmMain
       // 
@@ -334,6 +345,8 @@ namespace iTuner
     
     private void menuTrayMenuPreferences_Click(object sender, System.EventArgs e)
     { doPreferences(); }
+    private void menuTrayMenuShowRadioLog_Click(object sender, System.EventArgs e)
+    { doShowRadioLog(); }
     private void menuTrayMenuAbout_Click(object sender, System.EventArgs e)
     { doAbout(); }
     
@@ -524,41 +537,79 @@ namespace iTuner
     
     void doPreferences()
     {
-      if (this.IsDisposed) return;
-      clearHotkeys();
-      frmPreferences form = new frmPreferences();
-      form.ShowNotificationWindowOnStartup = settings.ShowNotificationWindowOnStartup;
-      form.ShowNotificationWindowOnSongChange = settings.ShowNotificationWindowOnSongChange;
-      form.ShowNotificationWindowOnPlay = settings.ShowNotificationWindowOnPlay;
-      form.ShowNotificationWindowOnStop = settings.ShowNotificationWindowOnStop;
-      form.HideNotificationWindowAfter = settings.HideNotificationWindowAfter;
-      form.Hotkeys = settings.Hotkeys;
-      form.LogRadioTracks = settings.LogRadioTracks;
-      form.LogRadioMarkOwnedTracks = settings.LogRadioMarkOwnedTracks;
-      form.RadioLogFile = settings.RadioLogFile;
-      if (form.ShowDialog() == DialogResult.OK)
+      if (IsDisposed) return;
+      if (inDialog) return;
+      
+      try
       {
-        // Set results
-        settings.ShowNotificationWindowOnStartup = form.ShowNotificationWindowOnStartup;
-        settings.ShowNotificationWindowOnSongChange = form.ShowNotificationWindowOnSongChange;
-        settings.ShowNotificationWindowOnPlay = form.ShowNotificationWindowOnPlay;
-        settings.ShowNotificationWindowOnStop = form.ShowNotificationWindowOnStop;
-        settings.HideNotificationWindowAfter = form.HideNotificationWindowAfter;
-        settings.Hotkeys = form.Hotkeys;
-        settings.LogRadioTracks = form.LogRadioTracks;
-        settings.LogRadioMarkOwnedTracks = form.LogRadioMarkOwnedTracks;
-        settings.RadioLogFile = form.RadioLogFile;
-        hotkeyAtoms = new int [settings.Hotkeys.Length];
-        // Save results
-        settings.Save();
+        inDialog = true;
+        clearHotkeys();
+        frmPreferences form = new frmPreferences();
+        form.ShowNotificationWindowOnStartup = settings.ShowNotificationWindowOnStartup;
+        form.ShowNotificationWindowOnSongChange = settings.ShowNotificationWindowOnSongChange;
+        form.ShowNotificationWindowOnPlay = settings.ShowNotificationWindowOnPlay;
+        form.ShowNotificationWindowOnStop = settings.ShowNotificationWindowOnStop;
+        form.HideNotificationWindowAfter = settings.HideNotificationWindowAfter;
+        form.Hotkeys = settings.Hotkeys;
+        form.LogRadioTracks = settings.LogRadioTracks;
+        form.LogRadioMarkOwnedTracks = settings.LogRadioMarkOwnedTracks;
+        form.RadioLogFile = settings.RadioLogFile;
+        if (form.ShowDialog() == DialogResult.OK)
+        {
+          // Set results
+          settings.ShowNotificationWindowOnStartup = form.ShowNotificationWindowOnStartup;
+          settings.ShowNotificationWindowOnSongChange = form.ShowNotificationWindowOnSongChange;
+          settings.ShowNotificationWindowOnPlay = form.ShowNotificationWindowOnPlay;
+          settings.ShowNotificationWindowOnStop = form.ShowNotificationWindowOnStop;
+          settings.HideNotificationWindowAfter = form.HideNotificationWindowAfter;
+          settings.Hotkeys = form.Hotkeys;
+          settings.LogRadioTracks = form.LogRadioTracks;
+          settings.LogRadioMarkOwnedTracks = form.LogRadioMarkOwnedTracks;
+          settings.RadioLogFile = form.RadioLogFile;
+          hotkeyAtoms = new int [settings.Hotkeys.Length];
+          // Save results
+          settings.Save();
+        }
+        setHotkeys();
       }
-      setHotkeys();
+      finally
+      {
+        inDialog = false;
+      }
+    }
+    
+    void doShowRadioLog()
+    {
+      if (IsDisposed) return;
+      if (inDialog) return;
+      
+      try
+      {
+        inDialog = true;
+        formShowRadioLog form = new formShowRadioLog();
+        form.LoadRadioLog(settings.RadioLogFile);
+        form.ShowDialog();
+      }
+      finally
+      {
+        inDialog = false;
+      }
     }
     
     void doAbout()
     {
-      if (this.IsDisposed) return;
-      (new frmAbout()).ShowDialog(this);
+      if (IsDisposed) return;
+      if (inDialog) return;
+      
+      try
+      {
+        inDialog = true;
+        (new frmAbout()).ShowDialog(this);
+      }
+      finally
+      {
+        inDialog = false;
+      }
     }
 
     void doExit()
@@ -777,9 +828,10 @@ namespace iTuner
       // Check for duplicate entry
       if (File.Exists(settings.RadioLogFile))
       {
+        StreamReader sr = null;
         try
         {
-          StreamReader sr = new StreamReader(File.OpenRead(settings.RadioLogFile));
+          sr = new StreamReader(File.OpenRead(settings.RadioLogFile));
           string line = "";
           while (sr.Peek() != -1) line = sr.ReadLine();
           if (line != null)
@@ -787,22 +839,41 @@ namespace iTuner
             line = line.Trim();
             if (line == logText) return;
           }
-          sr.Close();
         }
         catch (IOException)
         {}
+        finally
+        {
+          try
+          {
+            if (sr != null)
+              sr.Close();
+          }
+          catch
+          {}
+        }
       }
       
       // Log track information
+      StreamWriter file = null;
       try
       {
-        StreamWriter file = File.AppendText(settings.RadioLogFile);
+        file = File.AppendText(settings.RadioLogFile);
         file.WriteLine(logText);
-        file.Close();
       }
       catch (IOException ex)
       {
         MessageBox.Show(String.Format("Could not log radio track.\n\nTrack:\n{0}\n\nError Message:\n{1}", logText, ex.Message), "iTuner", MessageBoxButtons.OK, MessageBoxIcon.Information);
+      }
+      finally
+      {
+        try
+        {
+          if (file != null)
+            file.Close();
+        }
+        catch
+        {}
       }
     }
     
@@ -926,6 +997,7 @@ namespace iTuner
         status = "Rewind";
       g.DrawString(status, fontStatus, Brushes.Black, this.Width - g.MeasureString(status, fontStatus).Width, 4);
     }
+  
     void renderWindow ()
     {
       if (this.IsDisposed) return;
