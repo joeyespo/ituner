@@ -12,9 +12,6 @@ namespace iTuner
 {
   public class frmMain : System.Windows.Forms.Form
   {
-    class ExitException : Exception
-    {}
-    
     public readonly Size DefaultNotifySize = new Size(324, 98);
     
     bool inDialog = false;
@@ -80,8 +77,7 @@ namespace iTuner
       }
       catch (COMException)
       {
-        MessageBox.Show(this, "Could not interface with iTunes. Exiting.", "iTuner", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
-        throw new ExitException();
+        MessageBox.Show(this, "Could not interface with iTunes. iTuner will run with limited functionality.", "iTuner", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
       }
       
       this.SetStyle(ControlStyles.AllPaintingInWmPaint, true);
@@ -110,7 +106,7 @@ namespace iTuner
       timerClose.Start();
     }
     
-		#region Windows Form Designer generated code
+        #region Windows Form Designer generated code
     
     /// <summary>
     /// Clean up any resources being used.
@@ -292,7 +288,7 @@ namespace iTuner
       this.Paint += new System.Windows.Forms.PaintEventHandler(this.frmMain_Paint);
 
     }
-		
+        
     #endregion
     
     #endregion
@@ -303,10 +299,7 @@ namespace iTuner
     [STAThread]
     static void Main () 
     {
-      try
-      { frmMain form = new frmMain(); }
-      catch (ExitException)
-      { return; }
+      frmMain form = new frmMain();
       Application.Run();
     }
     
