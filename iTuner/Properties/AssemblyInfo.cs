@@ -6,11 +6,11 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("iTuner")]
-[assembly: AssemblyDescription("Add extended control to iTunes.")]
+[assembly: AssemblyDescription("A utility that interfaces with iTunes to provide additional functionality.")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Uber-ware")]
+[assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("iTuner")]
-[assembly: AssemblyCopyright("Copyright ©  2007")]
+[assembly: AssemblyCopyright("Copyright ©  2011")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
